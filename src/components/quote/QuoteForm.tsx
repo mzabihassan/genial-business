@@ -1,0 +1,821 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import {
+  ACCEPTED_EXTENSIONS,
+  ASSETS,
+  BUDGETS,
+  FEATURES,
+  FEATURE_UNSURE,
+  MAX_FILES,
+  MAX_FILE_BYTES,
+  MAX_TOTAL_BYTES,
+  PROJECT_TYPES,
+  SITUATIONS,
+  STEPS,
+  TIMELINES,
+  emptyQuote,
+  formatBytes,
+  validateStep,
+  type QuoteData,
+} from "@/lib/quote";
+import { ChoiceCard, Field, StepHeading } from "./Fields";
+import {
+  Alert,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Close,
+  Paperclip,
+} from "@/components/site/Icons";
+import { cx } from "@/lib/utils";
+
+export function QuoteForm() {
+  const router = useRouter();
+  const [step, setStep] = useState(0);
+  const [data, setData] = useState<QuoteData>(emptyQuote);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [furthest, setFurthest] = useState(0);
+
+  const formRef = useRef<HTMLFormElement>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
+  const startedAt = useRef<number | null>(null);
+  const isFirstRender = useRef(true);
+
+  const last = STEPS.length - 1;
+  const set = <K extends keyof QuoteData>(key: K, value: QuoteData[K]) =>
+    setData((d) => ({ ...d, [key]: value }));
+
+  const toggleIn = (key: "assets" | "features", value: string, on: boolean) =>
+    setData((d) => {
+      let next = on ? [...d[key], value] : d[key].filter((v) => v !== value);
+      // "Je ne sais pas" and a list of picks are mutually exclusive answers.
+      if (key === "features") {
+        if (value === FEATURE_UNSURE && on) next = [FEATURE_UNSURE];
+        else if (on) next = next.filter((v) => v !== FEATURE_UNSURE);
+      }
+      return { ...d, [key]: next };
+    });
+
+  // Stamped on mount: the API rejects submissions completed faster than a
+  // person could read the form.
+  useEffect(() => {
+    startedAt.current = Date.now();
+  }, []);
+
+  // Move focus to the new step so keyboard and screen-reader users follow along.
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    headingRef.current?.focus();
+  }, [step]);
+
+  const goTo = (next: number) => {
+    setStep(next);
+    setFurthest((f) => Math.max(f, next));
+  };
+
+  const handleNext = () => {
+    const found = validateStep(step, data);
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      requestAnimationFrame(() => {
+        const invalid = formRef.current?.querySelector<HTMLElement>(
+          '[aria-invalid="true"]',
+        );
+        invalid?.focus();
+      });
+      return;
+    }
+    goTo(Math.min(step + 1, last));
+  };
+
+  const handleFiles = (incoming: FileList | null) => {
+    if (!incoming) return;
+    setFileError(null);
+    const next = [...files];
+
+    for (const file of Array.from(incoming)) {
+      if (next.length >= MAX_FILES) {
+        setFileError(`${MAX_FILES} fichiers au maximum.`);
+        break;
+      }
+      const ext = "." + (file.name.split(".").pop() ?? "").toLowerCase();
+      if (!(ACCEPTED_EXTENSIONS as readonly string[]).includes(ext)) {
+        setFileError(`Format non accepté : ${file.name}`);
+        continue;
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        setFileError(
+          `${file.name} dépasse ${formatBytes(MAX_FILE_BYTES)}.`,
+        );
+        continue;
+      }
+      const total = next.reduce((s, f) => s + f.size, 0) + file.size;
+      if (total > MAX_TOTAL_BYTES) {
+        setFileError(`Poids total limité à ${formatBytes(MAX_TOTAL_BYTES)}.`);
+        break;
+      }
+      if (!next.some((f) => f.name === file.name && f.size === file.size)) {
+        next.push(file);
+      }
+    }
+    setFiles(next);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (step !== last) {
+      handleNext();
+      return;
+    }
+
+    const found = validateStep(last, data);
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      requestAnimationFrame(() => {
+        formRef.current
+          ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+          ?.focus();
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const body = new FormData();
+      for (const [key, value] of Object.entries(data)) {
+        if (Array.isArray(value)) value.forEach((v) => body.append(key, v));
+        else body.append(key, String(value));
+      }
+      body.append(
+        "elapsed",
+        String(startedAt.current ? Date.now() - startedAt.current : 0),
+      );
+      files.forEach((f) => body.append("attachments", f));
+
+      const res = await fetch("/api/devis", { method: "POST", body });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(payload?.error ?? "Envoi impossible pour le moment.");
+      }
+      router.push("/devis/confirmation");
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "Envoi impossible pour le moment. Réessayez ou écrivez-nous directement.",
+      );
+      setSubmitting(false);
+    }
+  };
+
+  const progress = ((step + 1) / STEPS.length) * 100;
+
+  return (
+    <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
+      {/* Progress rail */}
+      <aside className="lg:col-span-4">
+        <div className="lg:sticky lg:top-28">
+          {/* Mobile: a bar, because a 6-item list would eat the screen */}
+          <div className="lg:hidden">
+            <div className="flex items-baseline justify-between gap-4">
+              <p className="label text-trace-deep">
+                Étape {step + 1} / {STEPS.length}
+              </p>
+              <p className="text-[0.8125rem] font-medium text-ink">
+                {STEPS[step].title}
+              </p>
+            </div>
+            <div className="mt-3 h-[3px] w-full overflow-hidden rounded-full bg-wash">
+              <div
+                className="h-full rounded-full bg-prussian transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+
+          <ol className="hidden lg:block">
+            {STEPS.map((s, i) => {
+              const done = i < step;
+              const current = i === step;
+              const reachable = i <= furthest;
+              return (
+                <li key={s.id} className="relative">
+                  {i < STEPS.length - 1 && (
+                    <span
+                      aria-hidden="true"
+                      className={cx(
+                        "absolute left-[9px] top-[1.55rem] bottom-[-0.35rem] w-px transition-colors duration-500",
+                        done ? "bg-prussian" : "bg-rule",
+                      )}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    disabled={!reachable}
+                    onClick={() => reachable && setStep(i)}
+                    aria-current={current ? "step" : undefined}
+                    className={cx(
+                      "relative flex w-full items-start gap-4 rounded-[3px] py-3 pr-2 text-left transition-opacity",
+                      reachable ? "cursor-pointer" : "cursor-default opacity-45",
+                    )}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cx(
+                        "mt-[1px] flex size-[19px] shrink-0 items-center justify-center rounded-[2px] border transition-colors duration-300",
+                        done && "border-prussian bg-prussian",
+                        current && "border-prussian bg-surface",
+                        !done && !current && "border-rule bg-surface",
+                      )}
+                    >
+                      {done ? (
+                        <Check className="size-3 text-white" strokeWidth={2.6} />
+                      ) : (
+                        <span
+                          className={cx(
+                            "font-mono text-[0.625rem] font-medium",
+                            current ? "text-prussian" : "text-ink-mute",
+                          )}
+                        >
+                          {i + 1}
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={cx(
+                        "text-[0.9375rem] leading-tight transition-colors",
+                        current
+                          ? "font-semibold text-ink"
+                          : done
+                            ? "text-ink-soft"
+                            : "text-ink-mute",
+                      )}
+                    >
+                      {s.title}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+
+          <p className="mt-8 hidden border-t border-rule pt-6 text-[0.8125rem] leading-relaxed text-ink-mute lg:block">
+            Seuls votre description, votre nom et votre email sont nécessaires.
+            Tout le reste nous aide simplement à mieux préparer notre réponse.
+          </p>
+        </div>
+      </aside>
+
+      {/* The steps */}
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        noValidate
+        className="lg:col-span-8"
+      >
+        {/* Bots fill this in; people never see it */}
+        <div aria-hidden="true" className="absolute left-[-9999px] top-0 h-0 w-0 overflow-hidden">
+          <label htmlFor="site-web-conf">Ne pas remplir</label>
+          <input id="site-web-conf" name="siteWebConf" type="text" tabIndex={-1} autoComplete="off" />
+        </div>
+
+        <div
+          ref={headingRef}
+          tabIndex={-1}
+          key={step}
+          className="animate-[rise_0.45s_cubic-bezier(0.22,1,0.36,1)_both] outline-none"
+        >
+          {step === 0 && (
+            <>
+              <StepHeading
+                index={0}
+                total={STEPS.length}
+                title="Quel type de projet souhaitez-vous réaliser ?"
+                lead="Une idée approximative suffit. Si aucune case ne correspond, choisissez « Je ne sais pas encore »."
+              />
+              <div
+                role="radiogroup"
+                aria-label="Type de projet"
+                className="grid gap-3 sm:grid-cols-2"
+              >
+                {PROJECT_TYPES.map((t) => (
+                  <ChoiceCard
+                    key={t.value}
+                    type="radio"
+                    name="projectType"
+                    value={t.value}
+                    label={t.label}
+                    note={t.note}
+                    checked={data.projectType === t.value}
+                    onChange={(v) => {
+                      set("projectType", v);
+                      setErrors((e) => ({ ...e, projectType: "" }));
+                    }}
+                    emphasis={t.value === "inconnu"}
+                  />
+                ))}
+              </div>
+              {errors.projectType && (
+                <p role="alert" className="mt-4 text-[0.875rem] font-medium text-[#b3261e]">
+                  {errors.projectType}
+                </p>
+              )}
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <StepHeading
+                index={1}
+                total={STEPS.length}
+                title="Parlez-nous de votre projet."
+                lead="Décrivez votre idée avec vos propres mots. Aucun vocabulaire technique n’est nécessaire."
+              />
+              <div className="space-y-7">
+                <Field
+                  label="Votre projet"
+                  required
+                  hint="Ce que vous voulez faire, pour qui, et ce qui vous a amené à ce projet."
+                  error={errors.description}
+                >
+                  {(p) => (
+                    <textarea
+                      {...p}
+                      name="description"
+                      rows={7}
+                      value={data.description}
+                      onChange={(e) => set("description", e.target.value)}
+                      onBlur={() =>
+                        setErrors((er) => ({
+                          ...er,
+                          description: validateStep(1, data).description ?? "",
+                        }))
+                      }
+                      placeholder="Exemple : je gère un cabinet et je voudrais que mes clients puissent prendre rendez-vous en ligne, voir leurs documents et recevoir des rappels automatiques…"
+                    />
+                  )}
+                </Field>
+
+                {data.projectType === "autre" && (
+                  <Field label="Quel type de projet ?" optional>
+                    {(p) => (
+                      <input
+                        {...p}
+                        name="projectTypeOther"
+                        type="text"
+                        value={data.projectTypeOther}
+                        onChange={(e) => set("projectTypeOther", e.target.value)}
+                      />
+                    )}
+                  </Field>
+                )}
+
+                <Field label="Quel est l’objectif principal ?" optional>
+                  {(p) => (
+                    <input
+                      {...p}
+                      name="objective"
+                      type="text"
+                      value={data.objective}
+                      onChange={(e) => set("objective", e.target.value)}
+                      placeholder="Gagner du temps, vendre en ligne, remplacer un fichier Excel…"
+                    />
+                  )}
+                </Field>
+
+                <Field label="À qui s’adresse-t-il ?" optional>
+                  {(p) => (
+                    <input
+                      {...p}
+                      name="audience"
+                      type="text"
+                      value={data.audience}
+                      onChange={(e) => set("audience", e.target.value)}
+                      placeholder="Vos clients, vos équipes, le grand public…"
+                    />
+                  )}
+                </Field>
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <StepHeading
+                index={2}
+                total={STEPS.length}
+                title="Où en êtes-vous aujourd’hui ?"
+                lead="Il n’y a pas de bonne réponse. Beaucoup de projets démarrent avec une simple idée."
+              />
+              <div role="radiogroup" aria-label="Situation actuelle" className="grid gap-3 sm:grid-cols-2">
+                {SITUATIONS.map((s) => (
+                  <ChoiceCard
+                    key={s.value}
+                    type="radio"
+                    name="situation"
+                    value={s.value}
+                    label={s.label}
+                    checked={data.situation === s.value}
+                    onChange={(v) => set("situation", v)}
+                  />
+                ))}
+              </div>
+
+              <fieldset className="mt-10">
+                <legend className="text-[0.9375rem] font-medium text-ink">
+                  Avez-vous déjà certains éléments ?
+                </legend>
+                <p className="mt-1.5 text-[0.8125rem] text-ink-mute">
+                  Plusieurs réponses possibles.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {ASSETS.map((a) => (
+                    <ChoiceCard
+                      key={a}
+                      type="checkbox"
+                      name="assets"
+                      value={a}
+                      label={a}
+                      checked={data.assets.includes(a)}
+                      onChange={(v, on) => toggleIn("assets", v, on)}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <StepHeading
+                index={3}
+                total={STEPS.length}
+                title="Y a-t-il des fonctionnalités que vous savez déjà nécessaires ?"
+                lead="Pas besoin d’identifier tous les besoins techniques. Décrivez simplement votre idée : nous vous aiderons à déterminer ce que votre produit nécessite."
+              />
+
+              <div className="mb-5">
+                <ChoiceCard
+                  type="checkbox"
+                  name="features"
+                  value={FEATURE_UNSURE}
+                  label={FEATURE_UNSURE}
+                  note="C’est une réponse parfaitement valable — et la plus fréquente."
+                  checked={data.features.includes(FEATURE_UNSURE)}
+                  onChange={(v, on) => toggleIn("features", v, on)}
+                  emphasis
+                />
+              </div>
+
+              <fieldset
+                className={cx(
+                  "transition-opacity duration-300",
+                  data.features.includes(FEATURE_UNSURE) && "pointer-events-none opacity-40",
+                )}
+              >
+                <legend className="sr-only">Fonctionnalités souhaitées</legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {FEATURES.map((f) => (
+                    <ChoiceCard
+                      key={f}
+                      type="checkbox"
+                      name="features"
+                      value={f}
+                      label={f}
+                      checked={data.features.includes(f)}
+                      onChange={(v, on) => toggleIn("features", v, on)}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+            </>
+          )}
+
+          {step === 4 && (
+            <>
+              <StepHeading
+                index={4}
+                total={STEPS.length}
+                title="Dans quel cadre ?"
+                lead="Ces deux questions servent à comprendre votre contexte, pas à écarter votre projet. « Je ne sais pas encore » est une réponse."
+              />
+
+              <fieldset>
+                <legend className="text-[0.9375rem] font-medium text-ink">
+                  Budget approximatif
+                </legend>
+                <div role="radiogroup" aria-label="Budget approximatif" className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {BUDGETS.map((b) => (
+                    <ChoiceCard
+                      key={b}
+                      type="radio"
+                      name="budget"
+                      value={b}
+                      label={b}
+                      checked={data.budget === b}
+                      onChange={(v) => set("budget", v)}
+                      emphasis={b === "Je ne sais pas encore"}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="mt-10">
+                <legend className="text-[0.9375rem] font-medium text-ink">
+                  Délai souhaité
+                </legend>
+                <div role="radiogroup" aria-label="Délai souhaité" className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {TIMELINES.map((t) => (
+                    <ChoiceCard
+                      key={t}
+                      type="radio"
+                      name="timeline"
+                      value={t}
+                      label={t}
+                      checked={data.timeline === t}
+                      onChange={(v) => set("timeline", v)}
+                      emphasis={t === "Je ne sais pas encore"}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+            </>
+          )}
+
+          {step === 5 && (
+            <>
+              <StepHeading
+                index={5}
+                total={STEPS.length}
+                title="Comment vous joindre ?"
+                lead="Nous lisons chaque demande et revenons vers vous pour en discuter."
+              />
+
+              <div className="grid gap-7 sm:grid-cols-2">
+                <Field label="Nom" required error={errors.name}>
+                  {(p) => (
+                    <input
+                      {...p}
+                      name="name"
+                      type="text"
+                      autoComplete="name"
+                      value={data.name}
+                      onChange={(e) => set("name", e.target.value)}
+                      onBlur={() =>
+                        setErrors((er) => ({ ...er, name: validateStep(5, data).name ?? "" }))
+                      }
+                    />
+                  )}
+                </Field>
+
+                <Field label="Email" required error={errors.email}>
+                  {(p) => (
+                    <input
+                      {...p}
+                      name="email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={data.email}
+                      onChange={(e) => set("email", e.target.value)}
+                      onBlur={() =>
+                        setErrors((er) => ({ ...er, email: validateStep(5, data).email ?? "" }))
+                      }
+                    />
+                  )}
+                </Field>
+
+                <Field label="Société" optional>
+                  {(p) => (
+                    <input
+                      {...p}
+                      name="company"
+                      type="text"
+                      autoComplete="organization"
+                      value={data.company}
+                      onChange={(e) => set("company", e.target.value)}
+                    />
+                  )}
+                </Field>
+
+                <Field label="Téléphone" optional>
+                  {(p) => (
+                    <input
+                      {...p}
+                      name="phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={data.phone}
+                      onChange={(e) => set("phone", e.target.value)}
+                    />
+                  )}
+                </Field>
+
+                <div className="sm:col-span-2">
+                  <Field label="Site existant" optional>
+                    {(p) => (
+                      <input
+                        {...p}
+                        name="website"
+                        type="url"
+                        inputMode="url"
+                        value={data.website}
+                        onChange={(e) => set("website", e.target.value)}
+                        placeholder="https://"
+                      />
+                    )}
+                  </Field>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Field label="Message complémentaire" optional>
+                    {(p) => (
+                      <textarea
+                        {...p}
+                        name="message"
+                        rows={4}
+                        value={data.message}
+                        onChange={(e) => set("message", e.target.value)}
+                        placeholder="Une contrainte, une échéance, une question…"
+                      />
+                    )}
+                  </Field>
+                </div>
+              </div>
+
+              {/* Attachments */}
+              <div className="mt-8">
+                <p className="text-[0.9375rem] font-medium text-ink">
+                  Pièces jointes{" "}
+                  <span className="label ml-1 text-ink-mute">Facultatif</span>
+                </p>
+                <p className="mt-1.5 text-[0.8125rem] leading-snug text-ink-mute">
+                  Cahier des charges, maquettes, captures d’écran, documents.
+                  {" "}{MAX_FILES} fichiers maximum, {formatBytes(MAX_FILE_BYTES)} par fichier,{" "}
+                  {formatBytes(MAX_TOTAL_BYTES)} au total. Formats&nbsp;:{" "}
+                  PDF, Word, texte, images, ZIP.
+                </p>
+
+                <label className="mt-4 flex cursor-pointer items-center justify-center gap-2.5 rounded-[4px] border border-dashed border-[#0b1a2130] bg-surface px-4 py-6 text-[0.9375rem] font-medium text-ink transition-colors hover:border-prussian hover:bg-[#0e3a4f06] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-trace">
+                  <Paperclip className="size-4 text-ink-mute" />
+                  Ajouter des fichiers
+                  <input
+                    type="file"
+                    multiple
+                    accept={ACCEPTED_EXTENSIONS.join(",")}
+                    className="sr-only"
+                    onChange={(e) => {
+                      handleFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+
+                {fileError && (
+                  <p role="alert" className="mt-3 text-[0.8125rem] font-medium text-[#b3261e]">
+                    {fileError}
+                  </p>
+                )}
+
+                {files.length > 0 && (
+                  <ul className="mt-3 space-y-2">
+                    {files.map((f) => (
+                      <li
+                        key={`${f.name}-${f.size}`}
+                        className="flex items-center gap-3 rounded-[4px] border border-rule bg-surface px-3.5 py-2.5"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-[0.875rem] text-ink">
+                          {f.name}
+                        </span>
+                        <span className="font-mono text-[0.6875rem] text-ink-mute">
+                          {formatBytes(f.size)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFiles((cur) =>
+                              cur.filter((c) => !(c.name === f.name && c.size === f.size)),
+                            )
+                          }
+                          className="-mr-1.5 inline-flex size-8 items-center justify-center rounded-[3px] text-ink-mute transition-colors hover:bg-wash hover:text-ink"
+                        >
+                          <span className="sr-only">Retirer {f.name}</span>
+                          <Close className="size-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Consent */}
+              <div className="mt-8">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    name="consent"
+                    checked={data.consent}
+                    aria-invalid={Boolean(errors.consent)}
+                    onChange={(e) => {
+                      set("consent", e.target.checked);
+                      if (e.target.checked) setErrors((er) => ({ ...er, consent: "" }));
+                    }}
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className={cx(
+                      "mt-[0.1rem] flex size-[1.125rem] shrink-0 items-center justify-center rounded-[2px] border transition-colors",
+                      data.consent
+                        ? "border-prussian bg-prussian"
+                        : errors.consent
+                          ? "border-[#b3261e] bg-surface"
+                          : "border-[#0b1a2140] bg-surface",
+                    )}
+                  >
+                    {data.consent && <Check className="size-3 text-white" strokeWidth={2.6} />}
+                  </span>
+                  <span className="text-[0.875rem] leading-relaxed text-ink-soft">
+                    J’accepte que Genial Business utilise ces informations pour étudier
+                    ma demande et me répondre. Elles ne sont ni revendues ni utilisées
+                    à d’autres fins.{" "}
+                    <a href="/confidentialite" className="link-underline font-medium text-ink">
+                      Confidentialité
+                    </a>
+                    .
+                  </span>
+                </label>
+                {errors.consent && (
+                  <p role="alert" className="mt-2 pl-[1.875rem] text-[0.8125rem] font-medium text-[#b3261e]">
+                    {errors.consent}
+                  </p>
+                )}
+              </div>
+
+              {submitError && (
+                <div
+                  role="alert"
+                  className="mt-6 flex items-start gap-3 rounded-[4px] border border-[#b3261e3d] bg-[#b3261e0a] p-4"
+                >
+                  <Alert className="mt-0.5 size-4 shrink-0 text-[#b3261e]" />
+                  <p className="text-[0.875rem] leading-relaxed text-ink">
+                    {submitError}{" "}
+                    <a
+                      href="mailto:contact@genial-business.com"
+                      className="link-underline font-medium"
+                    >
+                      contact@genial-business.com
+                    </a>
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="mt-10 flex flex-col-reverse gap-3 border-t border-rule pt-7 sm:flex-row sm:items-center sm:justify-between">
+          {step > 0 ? (
+            <button
+              type="button"
+              onClick={() => setStep(step - 1)}
+              className="btn btn-ghost"
+              disabled={submitting}
+            >
+              <ArrowLeft className="size-4" />
+              Retour
+            </button>
+          ) : (
+            <span className="hidden sm:block" />
+          )}
+
+          {step < last ? (
+            <button type="button" onClick={handleNext} className="btn btn-primary btn-lg">
+              Continuer
+              <ArrowRight className="arrow size-4" />
+            </button>
+          ) : (
+            <button type="submit" className="btn btn-primary btn-lg" disabled={submitting}>
+              {submitting ? "Envoi en cours…" : "Envoyer ma demande"}
+              {!submitting && <ArrowRight className="arrow size-4" />}
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
