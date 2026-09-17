@@ -44,8 +44,9 @@ export default function ConfirmationPage() {
               Demande reçue.
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-ink-soft">
-              Un développeur va lire votre demande et vous contacter. Une copie
-              vient également de vous être envoyée par email.
+              Un développeur va lire votre demande et vous contacter.
+              L’accusé de réception par email peut arriver quelques instants
+              après cette confirmation.
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">

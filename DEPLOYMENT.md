@@ -6,6 +6,13 @@ Pages. Seul `POST /api/devis` exécute du code, dans
 transactionnelle de Brevo ; elle n’utilise ni SMTP, ni Nodemailer, ni serveur
 Next.js SSR, ni Cloudflare Container.
 
+Le succès est retourné dès que Brevo accepte la notification destinée à l’équipe.
+L’accusé de réception destiné au visiteur est ensuite conservé en arrière-plan
+avec `context.waitUntil()`, sans retarder la réponse HTTP. Cet appel secondaire
+expire après 20 secondes et ses erreurs sont journalisées sans invalider la
+demande déjà transmise. Il n’est jamais lancé si la notification principale échoue.
+Les pièces jointes restent transmises en binaire par le navigateur, sans altération.
+
 Cloudflare documente cette architecture pour les exports statiques Next.js :
 [guide Next.js statique](https://developers.cloudflare.com/pages/framework-guides/nextjs/deploy-a-static-nextjs-site/)
 et [Pages Functions](https://developers.cloudflare.com/pages/functions/).

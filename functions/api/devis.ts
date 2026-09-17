@@ -73,10 +73,8 @@ function fail(error: string, status = 400): Response {
   return Response.json({ error }, { status });
 }
 
-export const onRequestPost: PagesFunction<CloudflareEnv> = async ({
-  request,
-  env,
-}) => {
+export const onRequestPost: PagesFunction<CloudflareEnv> = async (context) => {
+  const { request, env } = context;
   const ip =
     request.headers.get("cf-connecting-ip") ||
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -175,6 +173,7 @@ export const onRequestPost: PagesFunction<CloudflareEnv> = async ({
         referer: request.headers.get("referer") ?? "",
       },
       env,
+      (task) => context.waitUntil(task),
     );
   } catch (error) {
     console.error(

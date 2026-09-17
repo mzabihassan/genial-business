@@ -196,6 +196,7 @@ async function sendBrevoEmail(
   apiKey: string,
   payload: Record<string, unknown>,
   fetcher: typeof fetch,
+  signal?: AbortSignal,
 ): Promise<void> {
   const response = await fetcher(BREVO_ENDPOINT, {
     method: "POST",
@@ -205,6 +206,7 @@ async function sendBrevoEmail(
       "content-type": "application/json",
     },
     body: JSON.stringify(payload),
+    signal,
   });
 
   if (!response.ok) {
@@ -217,6 +219,7 @@ export async function sendQuoteEmail(
   files: Attachment[],
   meta: MailMeta,
   env: MailEnv,
+  defer: (task: Promise<void>) => void,
   fetcher: typeof fetch = fetch,
 ): Promise<void> {
   const apiKey = env.BREVO_API_KEY?.trim();
@@ -253,25 +256,30 @@ export async function sendQuoteEmail(
     fetcher,
   );
 
-  // The lead is delivered. A failed acknowledgement must not turn that
-  // successful submission into an error for the visitor.
-  try {
-    await sendBrevoEmail(
-      apiKey,
-      {
-        sender: from,
-        to: [{ email: data.email, name: data.name.slice(0, 70) }],
-        subject: "Nous avons bien reçu votre demande | Genial Business",
-        textContent: `Bonjour ${data.name},\n\nNous avons bien reçu votre demande. Un développeur va la lire et vous contacter pour en discuter. S’il manque une information pour préparer le devis, nous vous demanderons simplement de la préciser.\n\nVoici la description que vous nous avez transmise :\n\n${data.description.trim()}\n\nL’équipe Genial Business\ngenial-business.com`,
-      },
-      fetcher,
-    );
-  } catch (error) {
-    console.warn(
-      JSON.stringify({
-        message: "Accusé de réception non envoyé",
-        error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
-      }),
-    );
-  }
+  // Only acknowledge an accepted lead. The caller retains this task with
+  // waitUntil so the visitor does not wait for a second email API request.
+  const acknowledge = async () => {
+    try {
+      await sendBrevoEmail(
+        apiKey,
+        {
+          sender: from,
+          to: [{ email: data.email, name: data.name.slice(0, 70) }],
+          subject: "Nous avons bien reçu votre demande | Genial Business",
+          textContent: `Bonjour ${data.name},\n\nNous avons bien reçu votre demande. Un développeur va la lire et vous contacter pour en discuter. S’il manque une information pour préparer le devis, nous vous demanderons simplement de la préciser.\n\nVoici la description que vous nous avez transmise :\n\n${data.description.trim()}\n\nL’équipe Genial Business\ngenial-business.com`,
+        },
+        fetcher,
+        // Stay within Cloudflare's 30-second post-response execution window.
+        AbortSignal.timeout(20_000),
+      );
+    } catch (error) {
+      console.warn(
+        JSON.stringify({
+          message: "Accusé de réception non envoyé",
+          error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
+        }),
+      );
+    }
+  };
+  defer(acknowledge());
 }

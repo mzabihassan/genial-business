@@ -10,6 +10,7 @@ const temp = await mkdtemp(join(root, ".quote-check-"));
 const savedError = console.error;
 const savedWarn = console.warn;
 const messages = [];
+const backgroundTasks = [];
 const env = {
   BREVO_API_KEY: "test-api-key",
   QUOTE_TO_EMAIL: "studio@example.invalid",
@@ -107,7 +108,11 @@ try {
       body: form,
       headers: { "cf-connecting-ip": ip || `127.0.0.${++caseNumber}` },
     });
-    return onRequestPost({ request, env: requestEnv });
+    return onRequestPost({
+      request,
+      env: requestEnv,
+      waitUntil(task) { backgroundTasks.push(task); },
+    });
   }
 
   for (const invalid of [
@@ -197,6 +202,7 @@ try {
     type: "text/plain",
   });
   assert.equal((await post({}, [file])).status, 200);
+  await Promise.all(backgroundTasks.splice(0));
   assert.equal(messages.length, 2, "Lead and acknowledgement must be sent");
   assert.equal(messages[0].to[0].email, "studio@example.invalid");
   assert.equal(messages[0].replyTo.email, "visitor@example.invalid");
@@ -209,6 +215,51 @@ try {
   );
   assert.equal(messages[1].to[0].email, "visitor@example.invalid");
 
+  // Gate each external call independently: success must wait for the lead,
+  // but must not wait for even a very slow acknowledgement.
+  let acceptLead;
+  let acceptAcknowledgement;
+  const leadGate = new Promise((resolve) => { acceptLead = resolve; });
+  const acknowledgementGate = new Promise((resolve) => { acceptAcknowledgement = resolve; });
+  let acknowledgeStarted = false;
+  let responseReturned = false;
+  globalThis.fetch = async (input, init) => {
+    const payload = JSON.parse(String(init.body));
+    if (payload.to[0].email === "visitor@example.invalid") {
+      acknowledgeStarted = true;
+      assert.ok(init.signal, "Background delivery must have a bounded timeout");
+      await acknowledgementGate;
+    } else {
+      await leadGate;
+    }
+    return mockFetch(input, init);
+  };
+  const pendingResponse = post().then((response) => {
+    responseReturned = true;
+    return response;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(responseReturned, false, "Never confirm before lead acceptance");
+  assert.equal(acknowledgeStarted, false, "Never acknowledge a pending lead");
+  acceptLead();
+  let watchdog;
+  try {
+    const response = await Promise.race([
+      pendingResponse,
+      new Promise((_, reject) => {
+        watchdog = setTimeout(() => reject(new Error("Slow acknowledgement blocked the response")), 1000);
+      }),
+    ]);
+    assert.equal(response.status, 200);
+    assert.equal(acknowledgeStarted, true);
+    assert.equal(backgroundTasks.length, 1, "Cloudflare must retain the acknowledgement after the response");
+  } finally {
+    clearTimeout(watchdog);
+    acceptAcknowledgement();
+    await Promise.all(backgroundTasks.splice(0));
+    globalThis.fetch = mockFetch;
+  }
+
   leadError = true;
   assert.equal(
     (await post()).status,
@@ -216,6 +267,7 @@ try {
     "Brevo lead failure must never show success",
   );
   leadError = false;
+  assert.equal(backgroundTasks.length, 0, "No acknowledgement after failed lead delivery");
 
   acknowledgementError = true;
   assert.equal(
@@ -223,6 +275,7 @@ try {
     200,
     "Acknowledgement failure must not discard a delivered lead",
   );
+  await Promise.all(backgroundTasks.splice(0));
   acknowledgementError = false;
 
   assert.equal(
@@ -240,7 +293,7 @@ try {
   assert.equal((await post({}, [], "192.0.2.100")).status, 429);
 
   console.log(
-    "Quote checks passed: valid submission, invalid input, honeypot, completion timing, attachment type/size/count/total limits, escaped HTML, base64 attachment, Brevo failure, lead delivery, acknowledgement failure, missing credentials, and isolate-local rate limiting. No email sent.",
+    "Quote checks passed: valid submission, invalid input, honeypot, completion timing, attachment type/size/count/total limits, escaped HTML, base64 attachment, Brevo failure, lead delivery, non-blocking slow acknowledgement, retained background delivery, acknowledgement failure, missing credentials, and isolate-local rate limiting. No email sent.",
   );
 } finally {
   console.error = savedError;
