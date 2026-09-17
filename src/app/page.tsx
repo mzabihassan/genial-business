@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { Hero } from "@/components/home/Hero";
 import { WhatWeBuild } from "@/components/home/WhatWeBuild";
 import { CompleteProduct } from "@/components/home/CompleteProduct";
@@ -9,12 +9,12 @@ import { Ownership } from "@/components/home/Ownership";
 import { CtaBand } from "@/components/site/CtaBand";
 import { Faq } from "@/components/site/Faq";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Genial Business | De l’idée au produit en ligne",
   description:
     "Studio de développement logiciel. Nous concevons des sites, des applications web et des logiciels métier, de la définition du besoin à la mise en ligne.",
-  alternates: { canonical: "/" },
-};
+  path: "/",
+});
 
 export default function Home() {
   return (

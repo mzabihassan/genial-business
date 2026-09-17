@@ -1,0 +1,6 @@
+# Keep deployment hostnames out of search results; production remains indexable.
+https://:project.pages.dev/*
+  X-Robots-Tag: noindex
+
+https://:version.:project.pages.dev/*
+  X-Robots-Tag: noindex

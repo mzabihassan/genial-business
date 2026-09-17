@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck:functions": "tsc -p functions/tsconfig.json",
     "test:quote": "node scripts/verify-quote.mjs",
+    "test:seo": "node scripts/verify-seo.mjs",
     "test:quote-ui": "playwright test",
     "preview:cloudflare": "wrangler pages dev out",
     "deploy:cloudflare": "npm run build && wrangler pages deploy out --project-name genial-business",

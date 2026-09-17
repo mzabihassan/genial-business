@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { Process } from "@/components/home/Process";
 import { HumanAi } from "@/components/home/HumanAi";
 import { CtaBand } from "@/components/site/CtaBand";
@@ -6,12 +6,12 @@ import { SectionHeading } from "@/components/site/SectionHeading";
 import { ownedAssets } from "@/content/ownership";
 import { delay } from "@/lib/utils";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Notre méthode | De l’idée à la mise en ligne",
   description:
     "Comment se passe un projet chez Genial Business : cadrage, périmètre, devis, construction, validation, mise en ligne, puis remise du produit et de tous ses accès.",
-  alternates: { canonical: "/methode" },
-};
+  path: "/methode",
+});
 
 const freedoms = [
   {

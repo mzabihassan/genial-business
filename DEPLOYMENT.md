@@ -159,6 +159,44 @@ Références Cloudflare : [limites Pages](https://developers.cloudflare.com/page
 [tarification Functions](https://developers.cloudflare.com/pages/functions/pricing/)
 et [limites Workers](https://developers.cloudflare.com/workers/platform/limits/).
 
+## Référencement et Google Search Console
+
+- Domaine canonique : `https://genial-business.com`, avec une canonique propre
+  à chacune des six pages publiques et des métadonnées de partage cohérentes.
+- Propriété Search Console : `sc-domain:genial-business.com`, vérifiée par DNS.
+  Conserver le TXT `google-site-verification` existant ; aucune balise HTML
+  supplémentaire n'est nécessaire pour cette propriété Domaine.
+- Sitemap à soumettre : `https://genial-business.com/sitemap.xml`.
+  L'ancien chemin `/sitemap` est redirigé en 301 vers ce fichier.
+- `robots.txt` autorise les pages et les ressources ; seul `/api/` est bloqué.
+  La confirmation reste accessible au robot pour qu'il lise son `noindex`.
+  Les erreurs 404 et la confirmation ne figurent pas dans le sitemap.
+- Les dates `lastmod` sont omises tant que les dates éditoriales réelles ne
+  sont pas suivies. Ne pas utiliser l'heure du build comme date de modification.
+- `public/_headers` ajoute `X-Robots-Tag: noindex` aux domaines `pages.dev`,
+  y compris les aperçus, sans bloquer le domaine de production.
+- Le balisage décrit une `Organization`, sans inventer une adresse physique
+  ni déclarer un établissement local incomplet.
+
+Vérification de l'export et du site déployé :
+
+```bash
+npm run build
+npm run test:seo
+npm run test:seo -- https://genial-business.com
+```
+
+Le contrôle vérifie le sitemap, les directives robots, les canoniques, les
+titres/descriptions uniques, le HTML rendu, le JSON-LD, les pages exclues et,
+en production, les statuts HTTP et la redirection de l'ancien sitemap.
+Dans Search Console, vérifier ensuite **Sitemaps** et utiliser **Inspection
+de l'URL > Tester l'URL publiée > Demander une indexation** pour les pages
+importantes. Une soumission réussie ne garantit pas l'indexation immédiate.
+
+Références : [directives noindex](https://developers.google.com/search/docs/crawling-indexing/block-indexing),
+[sitemaps Google](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap),
+[en-têtes Pages](https://developers.cloudflare.com/pages/configuration/headers/).
+
 ## Docker
 
 Le `Dockerfile` existant reste isolé du déploiement Pages : il demande

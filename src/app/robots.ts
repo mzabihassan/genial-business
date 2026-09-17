@@ -5,7 +5,8 @@ export const dynamic = "force-static";
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/devis/confirmation"] }],
+    // Google must crawl confirmation pages to read their noindex metadata.
+    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/"] }],
     sitemap: `${site.url}/sitemap.xml`,
     host: site.url,
   };

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { capabilities } from "@/content/capabilities";
 import { strata } from "@/content/strata";
@@ -7,12 +7,12 @@ import { SectionHeading } from "@/components/site/SectionHeading";
 import { ArrowRight } from "@/components/site/Icons";
 import { delay } from "@/lib/utils";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Services | Sites, applications et logiciels métier",
   description:
     "Conception et développement de sites, applications web, plateformes SaaS, outils métier et refontes, de la définition du besoin à la mise en ligne.",
-  alternates: { canonical: "/services" },
-};
+  path: "/services",
+});
 
 export default function ServicesPage() {
   return (

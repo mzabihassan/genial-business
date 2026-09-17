@@ -4,19 +4,14 @@ import { site } from "@/lib/site";
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
-  const entry = (
-    path: string,
-    priority: number,
-    changeFrequency: "monthly" | "yearly",
-  ) => ({ url: `${site.url}${path}`, lastModified: now, changeFrequency, priority });
-
+  // Omit lastModified until actual editorial update dates are tracked.
+  // A build timestamp incorrectly tells Google every page has changed.
   return [
-    entry("/", 1, "monthly"),
-    entry("/services", 0.9, "monthly"),
-    entry("/realisations", 0.9, "monthly"),
-    entry("/methode", 0.8, "monthly"),
-    entry("/devis", 0.9, "monthly"),
-    entry("/confidentialite", 0.2, "yearly"),
-  ];
+    "/",
+    "/services",
+    "/realisations",
+    "/methode",
+    "/devis",
+    "/confidentialite",
+  ].map((path) => ({ url: `${site.url}${path}` }));
 }

@@ -1,16 +1,16 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { projects } from "@/content/projects";
 import { ProjectFrame } from "@/components/site/ProjectFrame";
 import { CtaBand } from "@/components/site/CtaBand";
 import { ArrowUpRight, Check } from "@/components/site/Icons";
 import { cx, delay } from "@/lib/utils";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Réalisations | Produits conçus et développés",
   description:
     "Découvrez une sélection de produits conçus et développés par Genial Business, dont ISIIL et Profaly.",
-  alternates: { canonical: "/realisations" },
-};
+  path: "/realisations",
+});
 
 export default function RealisationsPage() {
   return (

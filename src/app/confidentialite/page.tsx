@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
 import { Prose } from "@/components/site/Prose";
 import { MAX_FILES, formatBytes, MAX_TOTAL_BYTES } from "@/lib/quote";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Politique de confidentialité",
   description:
     "Quelles données Genial Business collecte via le formulaire de devis, pourquoi, combien de temps elles sont conservées, et comment exercer vos droits.",
-  alternates: { canonical: "/confidentialite" },
-};
+  path: "/confidentialite",
+});
 
 export default function ConfidentialitePage() {
   return (

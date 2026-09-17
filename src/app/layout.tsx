@@ -51,7 +51,6 @@ export const metadata: Metadata = {
     "refonte site web",
     "développeurs expérimentés",
   ],
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "fr_FR",
@@ -61,7 +60,7 @@ export const metadata: Metadata = {
     description: site.description,
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "Genial Business | De l’idée au produit en ligne",
     description: site.description,
   },
@@ -75,14 +74,15 @@ export const viewport: Viewport = {
 
 const organizationLd = {
   "@context": "https://schema.org",
-  "@type": "ProfessionalService",
+  "@type": "Organization",
+  "@id": `${site.url}/#organization`,
   name: site.name,
   url: site.url,
   description: site.description,
   email: site.email,
   areaServed: "FR",
   knowsLanguage: ["fr-FR"],
-  serviceType: [
+  knowsAbout: [
     "Développement d’applications web",
     "Développement de plateformes SaaS",
     "Applications métier et back-office",

@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { QuoteForm } from "@/components/quote/QuoteForm";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Demander un devis",
   description:
     "Décrivez votre projet en quelques lignes. Aucun cahier des charges ni vocabulaire technique n’est nécessaire : nous vous aidons à définir votre produit.",
-  alternates: { canonical: "/devis" },
-};
+  path: "/devis",
+});
 export default function DevisPage() {
   return (
     <>
