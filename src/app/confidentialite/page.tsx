@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { legal, LEGAL_UPDATED } from "@/lib/legal";
+import { site } from "@/lib/site";
 import { Prose } from "@/components/site/Prose";
 import { MAX_FILES, formatBytes, MAX_TOTAL_BYTES } from "@/lib/quote";
 
@@ -18,10 +18,6 @@ export default function ConfidentialitePage() {
         <h1 className="mt-6 font-display text-[clamp(2rem,4.6vw,3.25rem)] font-semibold leading-[1.03]">
           Politique de confidentialité
         </h1>
-        <p className="mt-4 font-mono text-[0.75rem] text-ink-mute">
-          Dernière mise à jour : {LEGAL_UPDATED}
-        </p>
-
         <Prose className="mt-14">
           <h2>En résumé</h2>
           <p>
@@ -33,8 +29,8 @@ export default function ConfidentialitePage() {
 
           <h2>Responsable du traitement</h2>
           <p>
-            {legal.companyName}, {legal.address}. Pour toute question relative à vos
-            données : <a href={`mailto:${legal.contactEmail}`}>{legal.contactEmail}</a>.
+            Pour toute question relative à vos données, écrivez-nous à{" "}
+            <a href={`mailto:${site.email}`}>{site.email}</a>.
           </p>
 
           <h2>Données collectées</h2>
@@ -75,7 +71,7 @@ export default function ConfidentialitePage() {
 
           <h2>Destinataires</h2>
           <p>
-            Votre demande est transmise par email à l’équipe de {legal.companyName}.
+            Votre demande est transmise par email à notre équipe.
             Elle n’est ni revendue, ni louée, ni transmise à des tiers à des fins
             commerciales. Seuls notre hébergeur et notre prestataire d’envoi d’emails
             en assurent techniquement l’acheminement.
@@ -95,7 +91,7 @@ export default function ConfidentialitePage() {
             limitation et d’opposition sur vos données, ainsi que d’un droit à la
             portabilité. Vous pouvez retirer votre consentement à tout moment. Pour
             exercer ces droits, écrivez-nous à{" "}
-            <a href={`mailto:${legal.contactEmail}`}>{legal.contactEmail}</a> : nous
+            <a href={`mailto:${site.email}`}>{site.email}</a> : nous
             répondons sous un mois. Vous pouvez également introduire une réclamation
             auprès de la CNIL (
             <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">

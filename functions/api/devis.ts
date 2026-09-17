@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import type { PagesFunction } from "@cloudflare/workers-types";
 import { z } from "zod";
 import {
   ACCEPTED_EXTENSIONS,
@@ -14,45 +14,50 @@ import {
   SITUATIONS,
   TIMELINES,
   type QuoteData,
-} from "@/lib/quote";
-import { sendQuoteEmail, type Attachment } from "@/lib/mail";
+} from "../../src/lib/quote";
+import { sendQuoteEmail, type Attachment } from "../../src/lib/mail";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-/* --- Rate limiting -------------------------------------------------------- */
-/* Per-instance and in-memory on purpose: enough to stop a form-spam loop
-   without adding infrastructure to a marketing site. */
-
+// This is an isolate-local abuse throttle, not a global counter. Cloudflare's
+// Pages Functions binding list does not currently include Rate Limiting, and a
+// KV/DO just for this low-volume form would add avoidable infrastructure.
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_PER_WINDOW = 5;
 const hits = new Map<string, number[]>();
 
 function rateLimited(ip: string): boolean {
   const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
+  const recent = (hits.get(ip) ?? []).filter((time) => now - time < WINDOW_MS);
   recent.push(now);
   hits.set(ip, recent);
-  if (hits.size > 5000) hits.clear(); // crude ceiling, never unbounded
+  if (hits.size > 5000) hits.clear();
   return recent.length > MAX_PER_WINDOW;
 }
 
-/* --- Validation ----------------------------------------------------------- */
-
 const oneOf = <T extends readonly string[]>(values: T) =>
-  z.string().trim().refine((v) => v === "" || (values as readonly string[]).includes(v), {
-    message: "Valeur inattendue.",
-  });
+  z
+    .string()
+    .trim()
+    .refine((value) => value === "" || values.includes(value), {
+      message: "Valeur inattendue.",
+    });
 
 const schema = z.object({
-  projectType: oneOf(PROJECT_TYPES.map((p) => p.value)),
+  projectType: z.enum(PROJECT_TYPES.map((project) => project.value), {
+    message: "Choisissez un type de projet.",
+  }),
   projectTypeOther: z.string().trim().max(200),
-  description: z.string().trim().min(20, "Décrivez votre projet en quelques phrases.").max(8000),
+  description: z
+    .string()
+    .trim()
+    .min(20, "Décrivez votre projet en quelques phrases.")
+    .max(8000),
   objective: z.string().trim().max(500),
   audience: z.string().trim().max(500),
-  situation: oneOf(SITUATIONS.map((s) => s.value)),
+  situation: oneOf(SITUATIONS.map((situation) => situation.value)),
   assets: z.array(oneOf(ASSETS)).max(ASSETS.length),
-  features: z.array(oneOf([...FEATURES, FEATURE_UNSURE])).max(FEATURES.length + 1),
+  features: z
+    .array(oneOf([...FEATURES, FEATURE_UNSURE]))
+    .max(FEATURES.length + 1),
   budget: oneOf(BUDGETS),
   timeline: oneOf(TIMELINES),
   name: z.string().trim().min(1, "Indiquez votre nom.").max(120),
@@ -64,12 +69,16 @@ const schema = z.object({
   consent: z.literal(true, { message: "Votre accord est nécessaire." }),
 });
 
-function fail(error: string, status = 400) {
-  return NextResponse.json({ error }, { status });
+function fail(error: string, status = 400): Response {
+  return Response.json({ error }, { status });
 }
 
-export async function POST(request: Request) {
+export const onRequestPost: PagesFunction<CloudflareEnv> = async ({
+  request,
+  env,
+}) => {
   const ip =
+    request.headers.get("cf-connecting-ip") ||
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
     "inconnu";
@@ -85,11 +94,11 @@ export async function POST(request: Request) {
     return fail("Requête illisible.");
   }
 
-  // Bot traps: a filled honeypot, or a form completed faster than a human can read it.
   if (String(form.get("siteWebConf") ?? "").trim() !== "") {
-    return NextResponse.json({ ok: true });
+    return Response.json({ ok: true });
   }
-  if (Number(form.get("elapsed") ?? 0) < 2500) {
+  const elapsed = Number(form.get("elapsed") ?? 0);
+  if (!Number.isFinite(elapsed) || elapsed < 2500) {
     return fail("Envoi trop rapide. Réessayez.");
   }
 
@@ -117,9 +126,9 @@ export async function POST(request: Request) {
     return fail(parsed.error.issues[0]?.message ?? "Formulaire incomplet.");
   }
 
-  /* --- Attachments -------------------------------------------------------- */
-
-  const uploads = form.getAll("attachments").filter((f): f is File => f instanceof File);
+  const uploads = form
+    .getAll("attachments")
+    .filter((file): file is File => file instanceof File);
   if (uploads.length > MAX_FILES) {
     return fail(`${MAX_FILES} fichiers au maximum.`);
   }
@@ -130,8 +139,8 @@ export async function POST(request: Request) {
   for (const upload of uploads) {
     if (upload.size === 0) continue;
 
-    const ext = "." + (upload.name.split(".").pop() ?? "").toLowerCase();
-    if (!(ACCEPTED_EXTENSIONS as readonly string[]).includes(ext)) {
+    const extension = `.${upload.name.split(".").pop()?.toLowerCase() ?? ""}`;
+    if (!(ACCEPTED_EXTENSIONS as readonly string[]).includes(extension)) {
       return fail(`Format non accepté : ${upload.name}`);
     }
     if (upload.type && !ACCEPTED_MIME.has(upload.type)) {
@@ -146,27 +155,39 @@ export async function POST(request: Request) {
     }
 
     files.push({
-      // Strip any path and keep the name harmless — it lands in an email header.
-      filename: upload.name.replace(/[\\/]/g, "_").replace(/[\r\n]/g, "").slice(0, 120),
-      content: Buffer.from(await upload.arrayBuffer()),
+      filename: upload.name
+        .replace(/[\\/]/g, "_")
+        .replace(/[\r\n]/g, "")
+        .slice(0, 120),
+      content: await upload.arrayBuffer(),
       contentType: upload.type || "application/octet-stream",
     });
   }
 
-  /* --- Deliver ------------------------------------------------------------ */
-
   try {
-    await sendQuoteEmail(parsed.data as QuoteData, files, {
-      receivedAt: new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" }),
-      referer: request.headers.get("referer") ?? "",
-    });
-  } catch (err) {
-    console.error("Échec d’envoi de la demande de devis:", err);
+    await sendQuoteEmail(
+      parsed.data as QuoteData,
+      files,
+      {
+        receivedAt: new Date().toLocaleString("fr-FR", {
+          timeZone: "Europe/Paris",
+        }),
+        referer: request.headers.get("referer") ?? "",
+      },
+      env,
+    );
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        message: "Échec d’envoi de la demande de devis",
+        error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
+      }),
+    );
     return fail(
       "Votre demande n’a pas pu être envoyée. Réessayez, ou écrivez-nous directement à",
       502,
     );
   }
 
-  return NextResponse.json({ ok: true });
-}
+  return Response.json({ ok: true });
+};

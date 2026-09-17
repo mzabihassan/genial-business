@@ -1,0 +1,5 @@
+# Local Cloudflare Pages preview only. Copy to .dev.vars and use test values.
+# Never commit .dev.vars. The quote tests mock Brevo and do not read this file.
+BREVO_API_KEY=
+QUOTE_TO_EMAIL=quotes@example.invalid
+QUOTE_FROM_EMAIL="Genial Business <verified-sender@example.invalid>"

@@ -8,7 +8,7 @@ export function SectionHeading({
   size = "lg",
   accent = true,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: React.ReactNode;
   lead?: React.ReactNode;
   className?: string;
@@ -17,14 +17,13 @@ export function SectionHeading({
 }) {
   return (
     <div className={cx("max-w-3xl", className)}>
-      <p className={cx("label eyebrow", accent && "eyebrow-accent")} data-reveal="none">
+      {eyebrow && <p className={cx("label eyebrow", accent && "eyebrow-accent")}>
         {eyebrow}
-      </p>
+      </p>}
       <h2
-        data-reveal
-        style={{ ["--reveal-delay" as string]: "60ms" }}
         className={cx(
-          "mt-6 font-display font-semibold",
+          "font-display font-semibold",
+          eyebrow && "mt-6",
           size === "lg"
             ? "text-[clamp(2rem,4.6vw,3.5rem)] leading-[1.02]"
             : "text-[clamp(1.75rem,3.4vw,2.5rem)] leading-[1.05]",
@@ -34,8 +33,6 @@ export function SectionHeading({
       </h2>
       {lead && (
         <p
-          data-reveal
-          style={{ ["--reveal-delay" as string]: "140ms" }}
           className="mt-6 text-lg leading-relaxed text-ink-soft"
         >
           {lead}

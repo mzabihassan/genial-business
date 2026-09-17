@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { nav } from "@/lib/site";
 import { cx } from "@/lib/utils";
 import { Logo } from "./Logo";
@@ -12,6 +12,12 @@ export function Header() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const closeMenu = () => {
+    setOpen(false);
+    menuButton.current?.focus();
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -30,24 +36,55 @@ export function Header() {
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (!open) return;
+      if (e.key === "Escape") {
+        setOpen(false);
+        menuButton.current?.focus();
+      }
+      if (e.key === "Tab") {
+        const focusable = Array.from(
+          headerRef.current?.querySelectorAll<HTMLElement>(
+            "a[href], button:not(:disabled)",
+          ) ?? [],
+        ).filter((el) => el.getClientRects().length > 0);
+        const first = focusable[0],
+          last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onResize = () => {
+      if (desktop.matches) setOpen(false);
+    };
+    desktop.addEventListener("change", onResize);
     window.addEventListener("keydown", onKey);
     return () => {
+      desktop.removeEventListener("change", onResize);
       document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
   const isActive = (href: string) =>
-    href.startsWith("/#") ? false : pathname === href || pathname.startsWith(href + "/");
+    href.startsWith("/#")
+      ? false
+      : pathname === href || pathname.startsWith(href + "/");
 
   return (
     <header
+      ref={headerRef}
       className={cx(
-        "fixed inset-x-0 top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300",
+        "studio-header fixed inset-x-0 top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300",
         scrolled || open
           ? "border-b border-rule bg-paper/85 backdrop-blur-xl"
-          : "border-b border-transparent bg-transparent",
+          : "border-b border-rule bg-paper/95",
       )}
     >
       <div className="shell flex h-[4.5rem] items-center justify-between gap-6">
@@ -56,12 +93,15 @@ export function Header() {
           // Vertical padding pulled back by a negative margin: a 44px+ hit
           // area without changing the header's height.
           className="-my-3 py-3 text-ink transition-opacity hover:opacity-70"
-          aria-label="Genial Business — accueil"
+          aria-label="Genial Business, accueil"
         >
           <Logo />
         </Link>
 
-        <nav aria-label="Navigation principale" className="hidden items-center gap-8 lg:flex">
+        <nav
+          aria-label="Navigation principale"
+          className="hidden items-center gap-8 lg:flex"
+        >
           {nav.map((item) => (
             <Link
               key={item.href}
@@ -69,7 +109,9 @@ export function Header() {
               aria-current={isActive(item.href) ? "page" : undefined}
               className={cx(
                 "link-underline text-[0.9375rem] font-medium transition-colors",
-                isActive(item.href) ? "text-ink" : "text-ink-soft hover:text-ink",
+                isActive(item.href)
+                  ? "text-ink"
+                  : "text-ink-soft hover:text-ink",
               )}
             >
               {item.label}
@@ -78,19 +120,27 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link href="/devis" className="btn btn-primary hidden h-11 sm:inline-flex">
-            Demander un devis
-            <ArrowRight className="arrow size-4" />
+          <Link
+            href="/devis"
+            className="btn btn-primary header-quote h-11"
+            aria-label="Demander un devis"
+          >
+            <span className="hidden sm:inline">Demander un devis</span>
+            <span className="sm:hidden">Un devis</span>
+            <ArrowRight className="arrow hidden size-4 sm:block" />
           </Link>
 
           <button
+            ref={menuButton}
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-controls="menu-mobile"
             className="-mr-2 inline-flex size-11 items-center justify-center rounded-sm text-ink lg:hidden"
           >
-            <span className="sr-only">{open ? "Fermer le menu" : "Ouvrir le menu"}</span>
+            <span className="sr-only">
+              {open ? "Fermer le menu" : "Ouvrir le menu"}
+            </span>
             <span className="relative block h-3.5 w-6">
               <span
                 className={cx(
@@ -121,11 +171,14 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={closeMenu}
                 style={{ transitionDelay: `${60 + i * 45}ms` }}
                 className={cx(
                   "border-b border-rule py-5 font-display text-3xl font-semibold tracking-[-0.03em] text-ink",
                   "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                  open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
+                  open
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-3 opacity-0",
                 )}
               >
                 {item.label}
@@ -134,7 +187,11 @@ export function Header() {
           </nav>
 
           <div className="space-y-4">
-            <Link href="/devis" className="btn btn-primary btn-lg w-full">
+            <Link
+              href="/devis"
+              onClick={closeMenu}
+              className="btn btn-primary btn-lg w-full"
+            >
               Demander un devis
               <ArrowRight className="arrow size-4" />
             </Link>

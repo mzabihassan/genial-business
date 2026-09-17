@@ -21,7 +21,7 @@ export function ProjectFrame({
       href={project.url}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`Ouvrir ${project.name} — ${project.domain} (nouvelle fenêtre)`}
+      aria-label={`Ouvrir ${project.name} sur ${project.domain} (nouvelle fenêtre)`}
       className={cx(
         "group block rounded-[7px] focus-visible:outline-offset-4",
         className,
@@ -44,7 +44,7 @@ export function ProjectFrame({
             <span className="size-[7px] rounded-[1px] bg-[#0b1a2124]" />
           </span>
 
-          <span className="min-w-0 flex-1 truncate rounded-[3px] border border-rule bg-paper px-2.5 py-1 font-mono text-[0.6875rem] text-ink-mute">
+          <span className="min-w-0 flex-1 truncate rounded-[3px] border border-rule bg-paper px-2.5 py-1 font-mono text-xs text-ink-mute">
             {project.domain}
           </span>
 
@@ -59,7 +59,7 @@ export function ProjectFrame({
           <Image
             src={project.shot.src}
             alt={project.shot.alt}
-            priority={priority}
+            preload={priority}
             placeholder="blur"
             sizes="(min-width: 1024px) 58vw, 100vw"
             className="block h-auto w-full transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.018]"

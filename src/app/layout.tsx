@@ -5,6 +5,8 @@ import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { RevealProvider, revealBootScript } from "@/components/site/RevealProvider";
 import "./globals.css";
+import "./experience.css";
+import { MotionDirector } from "@/components/site/MotionDirector";
 
 /* The Google "latin" subset already covers French, œ and € included, so
    latin-ext would only add weight. */
@@ -33,7 +35,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: "Genial Business — De l’idée au produit en ligne",
+    default: "Genial Business | De l’idée au produit en ligne",
     template: "%s · Genial Business",
   },
   description: site.description,
@@ -55,19 +57,19 @@ export const metadata: Metadata = {
     locale: "fr_FR",
     url: site.url,
     siteName: site.name,
-    title: "Genial Business — De l’idée au produit en ligne",
+    title: "Genial Business | De l’idée au produit en ligne",
     description: site.description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Genial Business — De l’idée au produit en ligne",
+    title: "Genial Business | De l’idée au produit en ligne",
     description: site.description,
   },
   robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0e3a4f",
+  themeColor: "#f7f5f0",
   colorScheme: "light",
 };
 
@@ -108,6 +110,7 @@ export default function RootLayout({
           Aller au contenu
         </a>
         <RevealProvider />
+        <MotionDirector />
         <Header />
         <main id="contenu">{children}</main>
         <Footer />

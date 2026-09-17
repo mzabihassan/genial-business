@@ -8,25 +8,25 @@ import { ArrowRight } from "@/components/site/Icons";
 import { delay } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Services — sites, applications, SaaS, back-office",
+  title: "Services | Sites, applications et logiciels métier",
   description:
-    "Sites professionnels, applications web, plateformes SaaS, dashboards, applications métier, refontes et solutions intégrant l’IA. Un seul partenaire, de la définition du produit à la mise en ligne.",
+    "Conception et développement de sites, applications web, plateformes SaaS, outils métier et refontes, de la définition du besoin à la mise en ligne.",
   alternates: { canonical: "/services" },
 };
 
 export default function ServicesPage() {
   return (
     <>
-      <section className="sheet-grid border-b border-rule pb-16 pt-32 md:pb-20 md:pt-44">
+      <section className="sheet-grid editorial-hero border-b border-rule pb-16 pt-32 md:pb-20 md:pt-44" data-scroll-scene>
         <div className="shell">
           <p className="label eyebrow eyebrow-accent">Services</p>
           <h1 className="mt-6 max-w-4xl font-display text-[clamp(2.25rem,5.4vw,4rem)] font-semibold leading-[1.02]">
-            Un seul partenaire, de l’idée au produit en ligne.
+            Ce dont votre activité a besoin. Jusqu’à la mise en ligne.
           </h1>
           <p className="mt-7 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
-            Nous prenons en charge le produit complet&nbsp;: définir ce qu’il doit
-            faire, le concevoir, le développer, le tester, le mettre en ligne et
-            vous en remettre les clés.
+            Un site pour recevoir des demandes. Une application pour vendre un
+            service. Un logiciel pour mieux travailler. Nous construisons le
+            produit et les outils nécessaires à son fonctionnement, avec une seule équipe.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Link href="/devis" className="btn btn-primary btn-lg">
@@ -44,24 +44,22 @@ export default function ServicesPage() {
       <section className="band border-b border-rule">
         <div className="shell">
           <SectionHeading
-            eyebrow="Ce que nous construisons"
-            title="Sept points de départ. Un seul objectif : un produit qui sert."
-            lead="Beaucoup de projets ne rentrent pas exactement dans une case. Ce n’est pas un problème — c’est même le cas le plus courant."
+            title="Partez de votre besoin."
+            lead="Ces catégories donnent un point de repère. Si votre projet se trouve entre plusieurs, nous définirons le bon périmètre avec vous."
           />
 
-          <div className="mt-14 space-y-px border-y border-rule md:mt-20">
+          <div className="mt-14 border-t border-rule md:mt-20">
             {capabilities.map((c, i) => (
               <article
                 key={c.slug}
                 id={c.slug}
-                data-reveal
+                data-reveal="line"
                 style={delay((i % 3) * 60)}
-                className="scroll-mt-28 bg-surface"
+                className="capability-detail scroll-mt-28 border-b border-rule"
               >
                 <div className="grid gap-6 p-7 md:grid-cols-12 md:gap-10 md:p-10">
                   <div className="md:col-span-4">
-                    <c.Icon className="size-7 text-prussian" />
-                    <h3 className="mt-5 font-display text-[1.5rem] font-semibold leading-tight tracking-[-0.025em] md:text-[1.75rem]">
+                    <h3 className="font-display text-[1.5rem] font-semibold leading-tight tracking-[-0.025em] md:text-[1.75rem]">
                       {c.title}
                     </h3>
                   </div>
@@ -70,10 +68,10 @@ export default function ServicesPage() {
                     <p className="text-[1.0625rem] font-medium leading-snug text-prussian">
                       {c.outcome}
                     </p>
-                    <p className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-ink-soft">
+                    <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-soft">
                       {c.detail}
                     </p>
-                    <ul className="mt-5 flex flex-wrap gap-x-2.5 gap-y-1.5 font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-ink-mute">
+                    <ul className="mt-5 flex flex-wrap gap-x-2.5 gap-y-1.5 font-mono text-xs uppercase tracking-[0.08em] text-ink-mute">
                       {c.examples.map((e, j, arr) => (
                         <li key={e}>
                           {e}
@@ -97,27 +95,25 @@ export default function ServicesPage() {
       <section id="produit-complet" className="band scroll-mt-24 border-b border-rule">
         <div className="shell">
           <SectionHeading
-            eyebrow="Le produit complet"
-            title="Ce qu’il y a derrière ce que voit l’utilisateur."
-            lead="Selon le projet, tout ou partie de ces briques est nécessaire. Nous identifions celles dont votre produit a réellement besoin — et nous laissons les autres de côté."
+            title="Un produit prêt à fonctionner, pas un chantier à terminer."
+            lead="Administration, accès, données ou hébergement : leur utilité dépend du projet. Nous ne prévoyons que ce qui est nécessaire à son fonctionnement."
           />
 
-          <div className="mt-14 grid gap-px overflow-hidden rounded-[5px] border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3 md:mt-20">
+          <div className="mt-14 grid gap-x-10 gap-y-0 border-t border-rule sm:grid-cols-2 lg:grid-cols-3 md:mt-20">
             {strata.map((s, i) => (
               <div
                 key={s.id}
                 data-reveal
                 style={delay((i % 3) * 70)}
-                className="bg-surface p-7"
+                className="border-b border-rule py-7"
               >
-                <s.Icon className="size-[1.375rem] text-trace-deep" />
-                <h3 className="mt-5 font-display text-[1.0625rem] font-semibold tracking-[-0.02em]">
+                <h3 className="font-display text-[1.0625rem] font-semibold tracking-[-0.02em]">
                   {s.title}
                 </h3>
-                <p className="mt-1.5 text-[0.875rem] leading-snug text-ink-mute">
+                <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink-mute">
                   {s.role}
                 </p>
-                <ul className="mt-4 space-y-1.5 text-[0.875rem] text-ink-soft">
+                <ul className="mt-4 space-y-2 text-base leading-relaxed text-ink-soft">
                   {s.parts.map((p) => (
                     <li key={p} className="flex gap-2.5">
                       <span
@@ -132,15 +128,16 @@ export default function ServicesPage() {
             ))}
           </div>
 
-          <p data-reveal className="mt-8 max-w-2xl text-[0.9375rem] text-ink-mute">
-            Vous n’avez pas à penser à toute cette complexité. C’est notre travail.
+          <p data-reveal className="mt-8 max-w-2xl text-base leading-relaxed text-ink-mute">
+            Nous passons ces points en revue pendant le cadrage. Vous n’avez pas
+            à les définir avant de nous contacter.
           </p>
         </div>
       </section>
 
       <CtaBand
-        title="Dites-nous ce que vous voulez obtenir."
-        lead="Nous identifions ce que votre produit nécessite réellement, puis nous vous envoyons une proposition claire."
+        title="Décrivez-nous votre besoin."
+        lead="Nous déterminerons avec vous ce que le produit doit contenir, puis nous chiffrerons ce périmètre."
       />
     </>
   );

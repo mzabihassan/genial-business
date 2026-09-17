@@ -32,9 +32,11 @@ export function ChoiceCard({
         "transition-[border-color,background-color,box-shadow] duration-200",
         "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-trace",
         checked
-          ? "border-prussian bg-[#0e3a4f08] shadow-[inset_0_0_0_1px_var(--color-prussian)]"
+          ? "border-prussian bg-[#bb4d2d08] shadow-[inset_0_0_0_1px_var(--color-prussian)]"
           : "border-rule hover:border-[#0b1a2138]",
-        emphasis && !checked && "border-dashed border-[#a86c1559] bg-[#e9a23b0a]",
+        emphasis &&
+          !checked &&
+          "border-dashed border-[#a86c1559] bg-[#ed996f0a]",
       )}
     >
       <input
@@ -50,29 +52,31 @@ export function ChoiceCard({
         aria-hidden="true"
         className={cx(
           "mt-[0.15rem] flex size-[1.125rem] shrink-0 items-center justify-center border transition-colors",
-          type === "radio" ? "rotate-45 rounded-[1px]" : "rounded-[2px]",
-          checked ? "border-prussian bg-prussian" : "border-[#0b1a2140] bg-paper",
+          type === "radio" ? "rounded-full" : "rounded-[2px]",
+          checked
+            ? "border-prussian bg-prussian"
+            : "border-[#0b1a2140] bg-paper",
         )}
       >
         {type === "checkbox" && checked && (
           <Check className="size-3 text-white" strokeWidth={2.6} />
         )}
         {type === "radio" && checked && (
-          <span className="size-1.5 -rotate-45 bg-white" />
+          <span className="size-1.5 rounded-full bg-white" />
         )}
       </span>
 
       <span className="min-w-0">
         <span
           className={cx(
-            "block text-[0.9375rem] font-medium leading-snug",
+            "block text-base font-medium leading-snug",
             checked ? "text-prussian" : "text-ink",
           )}
         >
           {label}
         </span>
         {note && (
-          <span className="mt-1 block text-[0.8125rem] leading-snug text-ink-mute">
+          <span className="mt-1.5 block text-sm leading-relaxed text-ink-mute">
             {note}
           </span>
         )}
@@ -111,7 +115,7 @@ export function Field({
   return (
     <div>
       <label htmlFor={id} className="flex items-baseline justify-between gap-3">
-        <span className="text-[0.9375rem] font-medium text-ink">
+        <span className="text-base font-medium text-ink">
           {label}
           {required && (
             <span className="ml-1 text-trace-deep" aria-hidden="true">
@@ -123,7 +127,10 @@ export function Field({
       </label>
 
       {hint && (
-        <p id={hintId} className="mt-1.5 text-[0.8125rem] leading-snug text-ink-mute">
+        <p
+          id={hintId}
+          className="mt-1.5 text-sm leading-relaxed text-ink-mute"
+        >
           {hint}
         </p>
       )}
@@ -134,7 +141,7 @@ export function Field({
           "aria-invalid": Boolean(error),
           "aria-describedby": describedBy,
           className: cx(
-            "w-full rounded-[4px] border bg-surface px-3.5 py-3 text-[0.9375rem] text-ink",
+            "w-full rounded-[4px] border bg-surface px-3.5 py-3 text-base text-ink",
             "placeholder:text-[#9aa7ad] transition-[border-color,box-shadow] duration-200",
             "focus:outline-none focus:ring-0",
             error
@@ -148,7 +155,7 @@ export function Field({
         <p
           id={errorId}
           role="alert"
-          className="mt-2 flex items-start gap-1.5 text-[0.8125rem] font-medium text-[#b3261e]"
+          className="mt-2 flex items-start gap-1.5 text-sm font-medium text-[#b3261e]"
         >
           {error}
         </p>
@@ -180,7 +187,7 @@ export function StepHeading({
         {title}
       </h2>
       {lead && (
-        <p className="mt-3 max-w-xl text-[0.9375rem] leading-relaxed text-ink-soft">
+        <p className="mt-3 max-w-xl text-base leading-relaxed text-ink-soft">
           {lead}
         </p>
       )}

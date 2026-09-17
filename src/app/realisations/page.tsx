@@ -6,24 +6,25 @@ import { ArrowUpRight, Check } from "@/components/site/Icons";
 import { cx, delay } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Réalisations — produits conçus et développés",
+  title: "Réalisations | Produits conçus et développés",
   description:
-    "ISIIL et Profaly : deux produits digitaux complets conçus et développés par Genial Business, du site public à l’administration, aux paiements et à la mise en ligne.",
+    "Découvrez une sélection de produits conçus et développés par Genial Business, dont ISIIL et Profaly.",
   alternates: { canonical: "/realisations" },
 };
 
 export default function RealisationsPage() {
   return (
     <>
-      <section className="sheet-grid border-b border-rule pb-14 pt-32 md:pb-16 md:pt-44">
+      <section className="sheet-grid editorial-hero border-b border-rule pb-14 pt-32 md:pb-16 md:pt-44" data-scroll-scene>
         <div className="shell">
           <p className="label eyebrow eyebrow-accent">Réalisations</p>
           <h1 className="mt-6 max-w-4xl font-display text-[clamp(2.25rem,5.4vw,4rem)] font-semibold leading-[1.02]">
-            Des produits en ligne, pas des maquettes.
+            Des idées devenues des produits en ligne.
           </h1>
           <p className="mt-7 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
-            Deux produits complets que nous avons conçus et construits. Chaque
-            capture ci-dessous ouvre le site réel&nbsp;: allez-y, regardez.
+            Parmi les produits que nous avons conçus et développés, voici ISIIL
+            et Profaly. Du parcours public aux fonctionnalités métier, découvrez
+            ce que chaque projet nous a amenés à construire.
           </p>
         </div>
       </section>
@@ -58,7 +59,7 @@ export default function RealisationsPage() {
                   <p
                     data-reveal
                     style={delay(100)}
-                    className="mt-6 text-[0.9375rem] leading-relaxed text-ink-soft"
+                    className="mt-6 text-base leading-relaxed text-ink-soft"
                   >
                     {p.summary}
                   </p>
@@ -76,7 +77,7 @@ export default function RealisationsPage() {
               </div>
 
               <div className="lg:col-span-7">
-                <div data-reveal="scale">
+                <div data-reveal="frame">
                   <ProjectFrame project={p} priority={i === 0} />
                 </div>
 
@@ -90,10 +91,10 @@ export default function RealisationsPage() {
                         style={delay(j * 45)}
                         className="grid gap-1 border-b border-rule py-4 md:grid-cols-[minmax(0,13rem)_1fr] md:gap-8"
                       >
-                        <h4 className="text-[0.9375rem] font-semibold text-ink">
+                        <h4 className="text-base font-semibold text-ink">
                           {s.title}
                         </h4>
-                        <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
+                        <p className="text-base leading-relaxed text-ink-soft">
                           {s.note}
                         </p>
                       </li>
@@ -107,7 +108,7 @@ export default function RealisationsPage() {
                     {p.capabilities.map((c) => (
                       <li
                         key={c}
-                        className="flex items-baseline gap-2.5 text-[0.9375rem] text-ink"
+                        className="flex items-baseline gap-2.5 text-base text-ink"
                       >
                         <Check
                           className="size-[0.875rem] shrink-0 translate-y-0.5 text-prussian"
@@ -125,8 +126,8 @@ export default function RealisationsPage() {
       ))}
 
       <CtaBand
-        title="Votre produit peut être le prochain."
-        lead="Décrivez-nous votre idée. Nous identifions ce qu’elle demande pour devenir un produit utilisable, puis nous vous envoyons une proposition."
+        title="Vous avez un projet à construire ?"
+        lead="Décrivez-nous le besoin. Nous vous aiderons à définir le produit et à chiffrer une première version."
       />
     </>
   );

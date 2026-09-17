@@ -28,7 +28,7 @@ export const process: Step[] = [
     title: "Nous définissons le périmètre",
     summary: "Ce que contient la première version.",
     detail:
-      "Nous écrivons ce qui entre dans la première version, ce qui peut attendre, et les briques que le produit nécessite réellement pour fonctionner — y compris celles auxquelles vous n’avez pas pensé.",
+      "Nous écrivons ce qui entre dans la première version, ce qui peut attendre et les briques nécessaires à son fonctionnement. Nous signalons aussi les contraintes techniques à prévoir.",
     side: "nous",
   },
   {
@@ -36,7 +36,7 @@ export const process: Step[] = [
     title: "Vous recevez un devis",
     summary: "Une proposition claire, sur un périmètre écrit.",
     detail:
-      "Vous savez ce qui est inclus, ce qui ne l’est pas, et pourquoi, avant de vous engager. S’il faut ajuster le périmètre pour tenir un budget, nous le faisons ensemble.",
+      "Le devis indique ce qui est inclus et ce qui reste hors périmètre. Si le budget l’exige, nous revoyons avec vous le contenu de la première version.",
     side: "vous",
   },
   {
@@ -44,7 +44,7 @@ export const process: Step[] = [
     title: "Nous construisons",
     summary: "Design et développement avancent ensemble.",
     detail:
-      "Le produit n’est pas dessiné d’un côté et codé de l’autre. Vous suivez l’avancement et voyez les écrans réels, pas des images.",
+      "Le design et le développement avancent au même rythme. Vous suivez le projet sur des écrans fonctionnels et nous faites part de vos retours.",
     side: "nous",
   },
   {

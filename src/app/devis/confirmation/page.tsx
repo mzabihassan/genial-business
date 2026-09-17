@@ -18,12 +18,12 @@ const next = [
   {
     n: "02",
     title: "Nous revenons vers vous",
-    body: "Pour en discuter et vous poser les questions qui manquent pour cadrer le projet.",
+    body: "Nous vous contactons pour en discuter et préciser les points nécessaires au cadrage.",
   },
   {
     n: "03",
     title: "Vous recevez une proposition",
-    body: "Un devis clair, basé sur un périmètre écrit. Vous savez ce qui est inclus avant de vous engager.",
+    body: "Le devis s’appuie sur un périmètre écrit et indique clairement ce qui est inclus.",
   },
 ];
 
@@ -44,8 +44,8 @@ export default function ConfirmationPage() {
               Demande reçue.
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-ink-soft">
-              Nous allons étudier votre projet et revenir vers vous. Vous recevez
-              également une copie de votre demande par email.
+              Un développeur va lire votre demande et vous contacter. Une copie
+              vient également de vous être envoyée par email.
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -58,7 +58,7 @@ export default function ConfirmationPage() {
               </Link>
             </div>
 
-            <p className="mt-8 text-[0.875rem] text-ink-mute">
+            <p className="mt-8 text-[0.9375rem] leading-relaxed text-ink-mute">
               Un élément à ajouter&nbsp;?{" "}
               <a
                 href={`mailto:${site.email}`}
@@ -75,14 +75,14 @@ export default function ConfirmationPage() {
             <ol className="mt-6 border-t border-rule">
               {next.map((s) => (
                 <li key={s.n} className="flex gap-5 border-b border-rule py-5">
-                  <span className="font-mono text-[0.8125rem] font-medium text-trace-deep">
+                  <span className="font-mono text-sm font-medium text-trace-deep">
                     {s.n}
                   </span>
                   <div>
                     <h2 className="font-display text-[1.0625rem] font-semibold tracking-[-0.02em]">
                       {s.title}
                     </h2>
-                    <p className="mt-1.5 text-[0.9375rem] leading-relaxed text-ink-soft">
+                    <p className="mt-1.5 text-base leading-relaxed text-ink-soft">
                       {s.body}
                     </p>
                   </div>

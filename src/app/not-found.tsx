@@ -8,7 +8,11 @@ export const metadata = {
 
 const elsewhere = [
   { href: "/services", label: "Services", note: "Ce que nous construisons" },
-  { href: "/realisations", label: "Réalisations", note: "Deux produits en ligne" },
+  {
+    href: "/realisations",
+    label: "Réalisations",
+    note: "Une sélection de produits en ligne",
+  },
   { href: "/methode", label: "Notre méthode", note: "Comment se passe un projet" },
 ];
 
@@ -42,10 +46,10 @@ export default function NotFound() {
                 href={e.href}
                 className="block h-full bg-surface p-5 transition-colors hover:bg-wash"
               >
-                <span className="block text-[0.9375rem] font-semibold text-ink">
+                <span className="block text-base font-semibold text-ink">
                   {e.label}
                 </span>
-                <span className="mt-1 block text-[0.8125rem] text-ink-mute">
+                <span className="mt-1 block text-sm leading-relaxed text-ink-mute">
                   {e.note}
                 </span>
               </Link>

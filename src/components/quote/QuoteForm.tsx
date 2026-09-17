@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ACCEPTED_EXTENSIONS,
+  ACCEPTED_MIME,
   ASSETS,
   BUDGETS,
   FEATURES,
@@ -45,11 +46,13 @@ export function QuoteForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
   const startedAt = useRef<number | null>(null);
-  const isFirstRender = useRef(true);
+  const previousStep = useRef(0);
 
   const last = STEPS.length - 1;
-  const set = <K extends keyof QuoteData>(key: K, value: QuoteData[K]) =>
+  const set = <K extends keyof QuoteData>(key: K, value: QuoteData[K]) => {
     setData((d) => ({ ...d, [key]: value }));
+    setErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
+  };
 
   const toggleIn = (key: "assets" | "features", value: string, on: boolean) =>
     setData((d) => {
@@ -58,6 +61,11 @@ export function QuoteForm() {
       if (key === "features") {
         if (value === FEATURE_UNSURE && on) next = [FEATURE_UNSURE];
         else if (on) next = next.filter((v) => v !== FEATURE_UNSURE);
+      }
+      if (key === "assets") {
+        const none = "Aucun pour l’instant";
+        if (value === none && on) next = [none];
+        else if (on) next = next.filter((v) => v !== none);
       }
       return { ...d, [key]: next };
     });
@@ -70,14 +78,14 @@ export function QuoteForm() {
 
   // Move focus to the new step so keyboard and screen-reader users follow along.
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    headingRef.current?.focus();
+    if (previousStep.current === step) return;
+    previousStep.current = step;
+    headingRef.current?.focus({ preventScroll: true });
+    headingRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
   }, [step]);
 
   const goTo = (next: number) => {
+    setErrors({});
     setStep(next);
     setFurthest((f) => Math.max(f, next));
   };
@@ -112,10 +120,12 @@ export function QuoteForm() {
         setFileError(`Format non accepté : ${file.name}`);
         continue;
       }
+      if (file.type && !ACCEPTED_MIME.has(file.type)) {
+        setFileError(`Format non accepté : ${file.name}`);
+        continue;
+      }
       if (file.size > MAX_FILE_BYTES) {
-        setFileError(
-          `${file.name} dépasse ${formatBytes(MAX_FILE_BYTES)}.`,
-        );
+        setFileError(`${file.name} dépasse ${formatBytes(MAX_FILE_BYTES)}.`);
         continue;
       }
       const total = next.reduce((s, f) => s + f.size, 0) + file.size;
@@ -137,6 +147,15 @@ export function QuoteForm() {
       return;
     }
 
+    if (submitting) return;
+    for (let i = 0; i < last; i++) {
+      const earlierErrors = validateStep(i, data);
+      if (Object.keys(earlierErrors).length) {
+        goTo(i);
+        setErrors(earlierErrors);
+        return;
+      }
+    }
     const found = validateStep(last, data);
     setErrors(found);
     if (Object.keys(found).length > 0) {
@@ -161,13 +180,17 @@ export function QuoteForm() {
         "elapsed",
         String(startedAt.current ? Date.now() - startedAt.current : 0),
       );
+      body.append(
+        "siteWebConf",
+        String(new FormData(formRef.current!).get("siteWebConf") ?? ""),
+      );
       files.forEach((f) => body.append("attachments", f));
 
       const res = await fetch("/api/devis", { method: "POST", body });
       if (!res.ok) {
-        const payload = (await res.json().catch(() => null)) as
-          | { error?: string }
-          | null;
+        const payload = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(payload?.error ?? "Envoi impossible pour le moment.");
       }
       router.push("/devis/confirmation");
@@ -184,17 +207,17 @@ export function QuoteForm() {
   const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
-    <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
+    <div className="grid gap-5 lg:grid-cols-12 lg:gap-16">
       {/* Progress rail */}
       <aside className="lg:col-span-4">
-        <div className="lg:sticky lg:top-28">
+        <div className="quote-rail lg:sticky lg:top-28">
           {/* Mobile: a bar, because a 6-item list would eat the screen */}
           <div className="lg:hidden">
             <div className="flex items-baseline justify-between gap-4">
               <p className="label text-trace-deep">
                 Étape {step + 1} / {STEPS.length}
               </p>
-              <p className="text-[0.8125rem] font-medium text-ink">
+              <p className="text-sm font-medium text-ink">
                 {STEPS[step].title}
               </p>
             </div>
@@ -224,12 +247,27 @@ export function QuoteForm() {
                   )}
                   <button
                     type="button"
-                    disabled={!reachable}
-                    onClick={() => reachable && setStep(i)}
+                    disabled={!reachable || submitting}
+                    onClick={() => {
+                      if (!reachable) return;
+                      if (i > step) {
+                        for (let j = 0; j < i; j++) {
+                          const found = validateStep(j, data);
+                          if (Object.keys(found).length) {
+                            goTo(j);
+                            setErrors(found);
+                            return;
+                          }
+                        }
+                      }
+                      goTo(i);
+                    }}
                     aria-current={current ? "step" : undefined}
                     className={cx(
                       "relative flex w-full items-start gap-4 rounded-[3px] py-3 pr-2 text-left transition-opacity",
-                      reachable ? "cursor-pointer" : "cursor-default opacity-45",
+                      reachable
+                        ? "cursor-pointer"
+                        : "cursor-default opacity-45",
                     )}
                   >
                     <span
@@ -242,11 +280,14 @@ export function QuoteForm() {
                       )}
                     >
                       {done ? (
-                        <Check className="size-3 text-white" strokeWidth={2.6} />
+                        <Check
+                          className="size-3 text-white"
+                          strokeWidth={2.6}
+                        />
                       ) : (
                         <span
                           className={cx(
-                            "font-mono text-[0.625rem] font-medium",
+                            "font-mono text-[0.6875rem] font-medium",
                             current ? "text-prussian" : "text-ink-mute",
                           )}
                         >
@@ -256,7 +297,7 @@ export function QuoteForm() {
                     </span>
                     <span
                       className={cx(
-                        "text-[0.9375rem] leading-tight transition-colors",
+                        "text-base leading-tight transition-colors",
                         current
                           ? "font-semibold text-ink"
                           : done
@@ -272,9 +313,9 @@ export function QuoteForm() {
             })}
           </ol>
 
-          <p className="mt-8 hidden border-t border-rule pt-6 text-[0.8125rem] leading-relaxed text-ink-mute lg:block">
-            Seuls votre description, votre nom et votre email sont nécessaires.
-            Tout le reste nous aide simplement à mieux préparer notre réponse.
+          <p className="mt-8 hidden border-t border-rule pt-6 text-sm leading-relaxed text-ink-mute lg:block">
+            Le type de projet, sa description et vos coordonnées suffisent pour
+            envoyer la demande. Le reste est facultatif.
           </p>
         </div>
       </aside>
@@ -284,31 +325,46 @@ export function QuoteForm() {
         ref={formRef}
         onSubmit={handleSubmit}
         noValidate
-        className="lg:col-span-8"
+        className="quote-panel lg:col-span-8"
+        aria-busy={submitting}
       >
         {/* Bots fill this in; people never see it */}
-        <div aria-hidden="true" className="absolute left-[-9999px] top-0 h-0 w-0 overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="absolute left-[-9999px] top-0 h-0 w-0 overflow-hidden"
+        >
           <label htmlFor="site-web-conf">Ne pas remplir</label>
-          <input id="site-web-conf" name="siteWebConf" type="text" tabIndex={-1} autoComplete="off" />
+          <input
+            id="site-web-conf"
+            name="siteWebConf"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+          />
         </div>
 
         <div
           ref={headingRef}
           tabIndex={-1}
           key={step}
-          className="animate-[rise_0.45s_cubic-bezier(0.22,1,0.36,1)_both] outline-none"
+          className="scroll-mt-28 animate-[rise_0.45s_cubic-bezier(0.22,1,0.36,1)_both] outline-none"
         >
           {step === 0 && (
             <>
               <StepHeading
                 index={0}
                 total={STEPS.length}
-                title="Quel type de projet souhaitez-vous réaliser ?"
-                lead="Une idée approximative suffit. Si aucune case ne correspond, choisissez « Je ne sais pas encore »."
+                title="Que souhaitez-vous créer ?"
+                lead="Choisissez l’option la plus proche. Si vous hésitez, nous en parlerons avec vous."
               />
               <div
                 role="radiogroup"
                 aria-label="Type de projet"
+                aria-invalid={Boolean(errors.projectType)}
+                aria-describedby={
+                  errors.projectType ? "project-type-error" : undefined
+                }
+                tabIndex={-1}
                 className="grid gap-3 sm:grid-cols-2"
               >
                 {PROJECT_TYPES.map((t) => (
@@ -329,7 +385,11 @@ export function QuoteForm() {
                 ))}
               </div>
               {errors.projectType && (
-                <p role="alert" className="mt-4 text-[0.875rem] font-medium text-[#b3261e]">
+                <p
+                  id="project-type-error"
+                  role="alert"
+                  className="mt-4 text-[0.875rem] font-medium text-[#b3261e]"
+                >
                   {errors.projectType}
                 </p>
               )}
@@ -348,23 +408,18 @@ export function QuoteForm() {
                 <Field
                   label="Votre projet"
                   required
-                  hint="Ce que vous voulez faire, pour qui, et ce qui vous a amené à ce projet."
+                  hint="Expliquez ce que vous voulez faire, à qui le produit s’adresse et ce qui vous amène à ce projet."
                   error={errors.description}
                 >
                   {(p) => (
                     <textarea
                       {...p}
                       name="description"
+                      maxLength={8000}
                       rows={7}
                       value={data.description}
                       onChange={(e) => set("description", e.target.value)}
-                      onBlur={() =>
-                        setErrors((er) => ({
-                          ...er,
-                          description: validateStep(1, data).description ?? "",
-                        }))
-                      }
-                      placeholder="Exemple : je gère un cabinet et je voudrais que mes clients puissent prendre rendez-vous en ligne, voir leurs documents et recevoir des rappels automatiques…"
+                      placeholder="Exemple : je gère un cabinet. Je voudrais que mes clients prennent rendez-vous en ligne et retrouvent leurs documents depuis un espace personnel."
                     />
                   )}
                 </Field>
@@ -375,9 +430,12 @@ export function QuoteForm() {
                       <input
                         {...p}
                         name="projectTypeOther"
+                        maxLength={200}
                         type="text"
                         value={data.projectTypeOther}
-                        onChange={(e) => set("projectTypeOther", e.target.value)}
+                        onChange={(e) =>
+                          set("projectTypeOther", e.target.value)
+                        }
                       />
                     )}
                   </Field>
@@ -388,10 +446,11 @@ export function QuoteForm() {
                     <input
                       {...p}
                       name="objective"
+                      maxLength={500}
                       type="text"
                       value={data.objective}
                       onChange={(e) => set("objective", e.target.value)}
-                      placeholder="Gagner du temps, vendre en ligne, remplacer un fichier Excel…"
+                      placeholder="Par exemple : gagner du temps ou remplacer un fichier Excel"
                     />
                   )}
                 </Field>
@@ -401,10 +460,11 @@ export function QuoteForm() {
                     <input
                       {...p}
                       name="audience"
+                      maxLength={500}
                       type="text"
                       value={data.audience}
                       onChange={(e) => set("audience", e.target.value)}
-                      placeholder="Vos clients, vos équipes, le grand public…"
+                      placeholder="Par exemple : vos clients ou votre équipe"
                     />
                   )}
                 </Field>
@@ -418,9 +478,13 @@ export function QuoteForm() {
                 index={2}
                 total={STEPS.length}
                 title="Où en êtes-vous aujourd’hui ?"
-                lead="Il n’y a pas de bonne réponse. Beaucoup de projets démarrent avec une simple idée."
+                lead="Une idée suffit pour commencer. Indiquez simplement ce que vous avez déjà."
               />
-              <div role="radiogroup" aria-label="Situation actuelle" className="grid gap-3 sm:grid-cols-2">
+              <div
+                role="radiogroup"
+                aria-label="Situation actuelle"
+                className="grid gap-3 sm:grid-cols-2"
+              >
                 {SITUATIONS.map((s) => (
                   <ChoiceCard
                     key={s.value}
@@ -435,10 +499,10 @@ export function QuoteForm() {
               </div>
 
               <fieldset className="mt-10">
-                <legend className="text-[0.9375rem] font-medium text-ink">
+                <legend className="text-base font-medium text-ink">
                   Avez-vous déjà certains éléments ?
                 </legend>
-                <p className="mt-1.5 text-[0.8125rem] text-ink-mute">
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-mute">
                   Plusieurs réponses possibles.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -463,8 +527,8 @@ export function QuoteForm() {
               <StepHeading
                 index={3}
                 total={STEPS.length}
-                title="Y a-t-il des fonctionnalités que vous savez déjà nécessaires ?"
-                lead="Pas besoin d’identifier tous les besoins techniques. Décrivez simplement votre idée : nous vous aiderons à déterminer ce que votre produit nécessite."
+                title="Quelles fonctions avez-vous déjà en tête ?"
+                lead="Vous pouvez laisser cette étape vide. Nous identifierons les fonctions utiles pendant le cadrage."
               />
 
               <div className="mb-5">
@@ -473,19 +537,14 @@ export function QuoteForm() {
                   name="features"
                   value={FEATURE_UNSURE}
                   label={FEATURE_UNSURE}
-                  note="C’est une réponse parfaitement valable — et la plus fréquente."
+                  note="Nous vous aiderons à identifier les fonctionnalités utiles."
                   checked={data.features.includes(FEATURE_UNSURE)}
                   onChange={(v, on) => toggleIn("features", v, on)}
                   emphasis
                 />
               </div>
 
-              <fieldset
-                className={cx(
-                  "transition-opacity duration-300",
-                  data.features.includes(FEATURE_UNSURE) && "pointer-events-none opacity-40",
-                )}
-              >
+              <fieldset className="transition-opacity duration-300">
                 <legend className="sr-only">Fonctionnalités souhaitées</legend>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {FEATURES.map((f) => (
@@ -510,14 +569,18 @@ export function QuoteForm() {
                 index={4}
                 total={STEPS.length}
                 title="Dans quel cadre ?"
-                lead="Ces deux questions servent à comprendre votre contexte, pas à écarter votre projet. « Je ne sais pas encore » est une réponse."
+                lead="Le budget et le délai nous aident à comprendre le contexte. Vous pouvez laisser ces réponses ouvertes."
               />
 
               <fieldset>
-                <legend className="text-[0.9375rem] font-medium text-ink">
+                <legend className="text-base font-medium text-ink">
                   Budget approximatif
                 </legend>
-                <div role="radiogroup" aria-label="Budget approximatif" className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div
+                  role="radiogroup"
+                  aria-label="Budget approximatif"
+                  className="mt-4 grid gap-3 sm:grid-cols-2"
+                >
                   {BUDGETS.map((b) => (
                     <ChoiceCard
                       key={b}
@@ -534,10 +597,14 @@ export function QuoteForm() {
               </fieldset>
 
               <fieldset className="mt-10">
-                <legend className="text-[0.9375rem] font-medium text-ink">
+                <legend className="text-base font-medium text-ink">
                   Délai souhaité
                 </legend>
-                <div role="radiogroup" aria-label="Délai souhaité" className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div
+                  role="radiogroup"
+                  aria-label="Délai souhaité"
+                  className="mt-4 grid gap-3 sm:grid-cols-2"
+                >
                   {TIMELINES.map((t) => (
                     <ChoiceCard
                       key={t}
@@ -561,22 +628,39 @@ export function QuoteForm() {
                 index={5}
                 total={STEPS.length}
                 title="Comment vous joindre ?"
-                lead="Nous lisons chaque demande et revenons vers vous pour en discuter."
+                lead="Un développeur lira votre demande et vous répondra pour en discuter."
               />
 
+              <div className="quote-review">
+                <div className="quote-review-title">
+                  <strong>Votre projet en bref</strong>
+                  <button type="button" onClick={() => goTo(1)}>
+                    Modifier
+                  </button>
+                </div>
+                <p>
+                  {
+                    PROJECT_TYPES.find((t) => t.value === data.projectType)
+                      ?.label
+                  }
+                </p>
+                <p className="mt-2">{data.description}</p>
+                <small>
+                  {data.budget || "Budget à définir"} ·{" "}
+                  {data.timeline || "Délai à définir"}
+                </small>
+              </div>
               <div className="grid gap-7 sm:grid-cols-2">
                 <Field label="Nom" required error={errors.name}>
                   {(p) => (
                     <input
                       {...p}
                       name="name"
+                      maxLength={120}
                       type="text"
                       autoComplete="name"
                       value={data.name}
                       onChange={(e) => set("name", e.target.value)}
-                      onBlur={() =>
-                        setErrors((er) => ({ ...er, name: validateStep(5, data).name ?? "" }))
-                      }
                     />
                   )}
                 </Field>
@@ -586,14 +670,12 @@ export function QuoteForm() {
                     <input
                       {...p}
                       name="email"
+                      maxLength={200}
                       type="email"
                       inputMode="email"
                       autoComplete="email"
                       value={data.email}
                       onChange={(e) => set("email", e.target.value)}
-                      onBlur={() =>
-                        setErrors((er) => ({ ...er, email: validateStep(5, data).email ?? "" }))
-                      }
                     />
                   )}
                 </Field>
@@ -603,6 +685,7 @@ export function QuoteForm() {
                     <input
                       {...p}
                       name="company"
+                      maxLength={160}
                       type="text"
                       autoComplete="organization"
                       value={data.company}
@@ -616,6 +699,7 @@ export function QuoteForm() {
                     <input
                       {...p}
                       name="phone"
+                      maxLength={60}
                       type="tel"
                       inputMode="tel"
                       autoComplete="tel"
@@ -631,6 +715,7 @@ export function QuoteForm() {
                       <input
                         {...p}
                         name="website"
+                        maxLength={300}
                         type="url"
                         inputMode="url"
                         value={data.website}
@@ -647,10 +732,11 @@ export function QuoteForm() {
                       <textarea
                         {...p}
                         name="message"
+                        maxLength={4000}
                         rows={4}
                         value={data.message}
                         onChange={(e) => set("message", e.target.value)}
-                        placeholder="Une contrainte, une échéance, une question…"
+                        placeholder="Une contrainte, une échéance ou une question"
                       />
                     )}
                   </Field>
@@ -659,18 +745,18 @@ export function QuoteForm() {
 
               {/* Attachments */}
               <div className="mt-8">
-                <p className="text-[0.9375rem] font-medium text-ink">
+                <p className="text-base font-medium text-ink">
                   Pièces jointes{" "}
                   <span className="label ml-1 text-ink-mute">Facultatif</span>
                 </p>
-                <p className="mt-1.5 text-[0.8125rem] leading-snug text-ink-mute">
-                  Cahier des charges, maquettes, captures d’écran, documents.
-                  {" "}{MAX_FILES} fichiers maximum, {formatBytes(MAX_FILE_BYTES)} par fichier,{" "}
-                  {formatBytes(MAX_TOTAL_BYTES)} au total. Formats&nbsp;:{" "}
-                  PDF, Word, texte, images, ZIP.
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-mute">
+                  Cahier des charges, maquettes, captures d’écran, documents.{" "}
+                  {MAX_FILES} fichiers maximum, {formatBytes(MAX_FILE_BYTES)}{" "}
+                  par fichier, {formatBytes(MAX_TOTAL_BYTES)} au total.
+                  Formats&nbsp;: PDF, Word, texte, images, ZIP.
                 </p>
 
-                <label className="mt-4 flex cursor-pointer items-center justify-center gap-2.5 rounded-[4px] border border-dashed border-[#0b1a2130] bg-surface px-4 py-6 text-[0.9375rem] font-medium text-ink transition-colors hover:border-prussian hover:bg-[#0e3a4f06] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-trace">
+                <label className="mt-4 flex cursor-pointer items-center justify-center gap-2.5 rounded-[4px] border border-dashed border-[#0b1a2130] bg-surface px-4 py-6 text-base font-medium text-ink transition-colors hover:border-prussian hover:bg-[#bb4d2d06] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-trace">
                   <Paperclip className="size-4 text-ink-mute" />
                   Ajouter des fichiers
                   <input
@@ -686,7 +772,10 @@ export function QuoteForm() {
                 </label>
 
                 {fileError && (
-                  <p role="alert" className="mt-3 text-[0.8125rem] font-medium text-[#b3261e]">
+                  <p
+                    role="alert"
+                    className="mt-3 text-sm font-medium text-[#b3261e]"
+                  >
                     {fileError}
                   </p>
                 )}
@@ -698,17 +787,20 @@ export function QuoteForm() {
                         key={`${f.name}-${f.size}`}
                         className="flex items-center gap-3 rounded-[4px] border border-rule bg-surface px-3.5 py-2.5"
                       >
-                        <span className="min-w-0 flex-1 truncate text-[0.875rem] text-ink">
+                        <span className="min-w-0 flex-1 truncate text-[0.9375rem] text-ink">
                           {f.name}
                         </span>
-                        <span className="font-mono text-[0.6875rem] text-ink-mute">
+                        <span className="font-mono text-xs text-ink-mute">
                           {formatBytes(f.size)}
                         </span>
                         <button
                           type="button"
                           onClick={() =>
                             setFiles((cur) =>
-                              cur.filter((c) => !(c.name === f.name && c.size === f.size)),
+                              cur.filter(
+                                (c) =>
+                                  !(c.name === f.name && c.size === f.size),
+                              ),
                             )
                           }
                           className="-mr-1.5 inline-flex size-8 items-center justify-center rounded-[3px] text-ink-mute transition-colors hover:bg-wash hover:text-ink"
@@ -724,7 +816,7 @@ export function QuoteForm() {
 
               {/* Consent */}
               <div className="mt-8">
-                <label className="flex cursor-pointer items-start gap-3">
+                <label className="flex cursor-pointer items-start gap-3 rounded-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-4 has-[:focus-visible]:outline-prussian">
                   <input
                     type="checkbox"
                     name="consent"
@@ -732,7 +824,8 @@ export function QuoteForm() {
                     aria-invalid={Boolean(errors.consent)}
                     onChange={(e) => {
                       set("consent", e.target.checked);
-                      if (e.target.checked) setErrors((er) => ({ ...er, consent: "" }));
+                      if (e.target.checked)
+                        setErrors((er) => ({ ...er, consent: "" }));
                     }}
                     className="sr-only"
                   />
@@ -747,20 +840,28 @@ export function QuoteForm() {
                           : "border-[#0b1a2140] bg-surface",
                     )}
                   >
-                    {data.consent && <Check className="size-3 text-white" strokeWidth={2.6} />}
+                    {data.consent && (
+                      <Check className="size-3 text-white" strokeWidth={2.6} />
+                    )}
                   </span>
-                  <span className="text-[0.875rem] leading-relaxed text-ink-soft">
-                    J’accepte que Genial Business utilise ces informations pour étudier
-                    ma demande et me répondre. Elles ne sont ni revendues ni utilisées
-                    à d’autres fins.{" "}
-                    <a href="/confidentialite" className="link-underline font-medium text-ink">
+                  <span className="text-[0.9375rem] leading-relaxed text-ink-soft">
+                    J’accepte que Genial Business utilise ces informations pour
+                    étudier ma demande et me répondre. Elles ne sont ni
+                    revendues ni utilisées à d’autres fins.{" "}
+                    <a
+                      href="/confidentialite"
+                      className="link-underline font-medium text-ink"
+                    >
                       Confidentialité
                     </a>
                     .
                   </span>
                 </label>
                 {errors.consent && (
-                  <p role="alert" className="mt-2 pl-[1.875rem] text-[0.8125rem] font-medium text-[#b3261e]">
+                  <p
+                    role="alert"
+                    className="mt-2 pl-[1.875rem] text-sm font-medium text-[#b3261e]"
+                  >
                     {errors.consent}
                   </p>
                 )}
@@ -772,7 +873,7 @@ export function QuoteForm() {
                   className="mt-6 flex items-start gap-3 rounded-[4px] border border-[#b3261e3d] bg-[#b3261e0a] p-4"
                 >
                   <Alert className="mt-0.5 size-4 shrink-0 text-[#b3261e]" />
-                  <p className="text-[0.875rem] leading-relaxed text-ink">
+                  <p className="text-[0.9375rem] leading-relaxed text-ink">
                     {submitError}{" "}
                     <a
                       href="mailto:contact@genial-business.com"
@@ -792,7 +893,7 @@ export function QuoteForm() {
           {step > 0 ? (
             <button
               type="button"
-              onClick={() => setStep(step - 1)}
+              onClick={() => goTo(step - 1)}
               className="btn btn-ghost"
               disabled={submitting}
             >
@@ -803,13 +904,30 @@ export function QuoteForm() {
             <span className="hidden sm:block" />
           )}
 
+          {step >= 2 && step <= 4 && (
+            <button
+              type="button"
+              onClick={() => goTo(step + 1)}
+              className="text-link justify-center"
+            >
+              Passer cette étape
+            </button>
+          )}
           {step < last ? (
-            <button type="button" onClick={handleNext} className="btn btn-primary btn-lg">
+            <button
+              type="button"
+              onClick={handleNext}
+              className="btn btn-primary btn-lg"
+            >
               Continuer
               <ArrowRight className="arrow size-4" />
             </button>
           ) : (
-            <button type="submit" className="btn btn-primary btn-lg" disabled={submitting}>
+            <button
+              type="submit"
+              className="btn btn-primary btn-lg"
+              disabled={submitting}
+            >
               {submitting ? "Envoi en cours…" : "Envoyer ma demande"}
               {!submitting && <ArrowRight className="arrow size-4" />}
             </button>

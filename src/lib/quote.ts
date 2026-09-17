@@ -9,7 +9,7 @@ export const PROJECT_TYPES = [
   { value: "metier", label: "Application métier", note: "Digitaliser un processus interne" },
   { value: "refonte", label: "Refonte d’un produit existant", note: "Moderniser ce qui existe déjà" },
   { value: "ia", label: "Projet avec intelligence artificielle", note: "Analyse, automatisation, assistance" },
-  { value: "inconnu", label: "Je ne sais pas encore", note: "On en discute et on trouve ensemble" },
+  { value: "inconnu", label: "Je ne sais pas encore", note: "Nous préciserons le besoin avec vous" },
   { value: "autre", label: "Autre", note: "Décrivez-le à l’étape suivante" },
 ] as const;
 
@@ -48,7 +48,7 @@ export const FEATURES = [
   "Autre",
 ] as const;
 
-export const FEATURE_UNSURE = "Je ne sais pas — conseillez-moi";
+export const FEATURE_UNSURE = "Je ne sais pas encore, conseillez-moi";
 
 export const BUDGETS = [
   "Moins de 2 000 €",
@@ -72,7 +72,9 @@ export const TIMELINES = [
 
 export const MAX_FILES = 5;
 export const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 Mo
-export const MAX_TOTAL_BYTES = 20 * 1024 * 1024; // 20 Mo
+// Brevo caps the complete email at 20 MB. Base64 adds about 33%, so 14 MiB
+// leaves room for the message body and JSON envelope.
+export const MAX_TOTAL_BYTES = 14 * 1024 * 1024; // 14 Mo avant encodage
 
 export const ACCEPTED_EXTENSIONS = [
   ".pdf",
@@ -80,11 +82,9 @@ export const ACCEPTED_EXTENSIONS = [
   ".docx",
   ".odt",
   ".txt",
-  ".md",
   ".png",
   ".jpg",
   ".jpeg",
-  ".webp",
   ".gif",
   ".zip",
 ] as const;
@@ -95,10 +95,8 @@ export const ACCEPTED_MIME = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.oasis.opendocument.text",
   "text/plain",
-  "text/markdown",
   "image/png",
   "image/jpeg",
-  "image/webp",
   "image/gif",
   "application/zip",
   "application/x-zip-compressed",

@@ -5,26 +5,32 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "wrangler pages dev out",
+    "lint": "eslint",
+    "typecheck:functions": "tsc -p functions/tsconfig.json",
+    "test:quote": "node scripts/verify-quote.mjs",
+    "preview:cloudflare": "wrangler pages dev out",
+    "deploy:cloudflare": "npm run build && wrangler pages deploy out --project-name genial-business",
+    "cf-typegen": "wrangler types --env-file .dev.vars.example --env-interface CloudflareEnv --include-runtime=false worker-configuration.d.ts",
+    "docker:build": "docker build --tag genial-business ."
   },
   "dependencies": {
     "next": "16.3.4",
-    "nodemailer": "^10.0.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sharp": "^0.35.4",
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260907.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.129.1"
   }
 }

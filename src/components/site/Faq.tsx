@@ -1,6 +1,5 @@
 import { faq } from "@/content/faq";
 import { Plus } from "@/components/site/Icons";
-import { delay } from "@/lib/utils";
 
 const faqLd = {
   "@context": "https://schema.org",
@@ -14,32 +13,25 @@ const faqLd = {
 
 export function Faq() {
   return (
-    <section id="faq" className="band">
+    <section id="faq" className="studio-section faq-section">
       <div className="shell">
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
           <div className="lg:col-span-4">
             <div className="lg:sticky lg:top-28">
-              <p className="label eyebrow eyebrow-accent" data-reveal="none">
-                Questions fréquentes
-              </p>
               <h2
-                data-reveal
-                style={delay(60)}
-                className="mt-6 font-display text-[clamp(2rem,4vw,3rem)] font-semibold leading-[1.03]"
+                className="font-display text-[clamp(2rem,4vw,3rem)] font-semibold leading-[1.03]"
               >
-                Ce qu&rsquo;on nous demande avant de commencer.
+                Vos questions, avant de commencer.
               </h2>
             </div>
           </div>
 
           <div className="lg:col-span-8">
             <div className="border-t border-rule">
-              {faq.map((item, i) => (
+              {faq.map((item) => (
                 <details
                   key={item.q}
                   className="faq-item group border-b border-rule"
-                  data-reveal="none"
-                  style={delay(Math.min(i, 6) * 40)}
                 >
                   <summary className="flex items-start justify-between gap-6 py-6 transition-colors hover:text-ink">
                     <h3 className="font-display text-[1.0625rem] font-semibold leading-snug tracking-[-0.015em] text-ink transition-colors md:text-[1.1875rem]">
@@ -50,7 +42,7 @@ export function Faq() {
                       aria-hidden="true"
                     />
                   </summary>
-                  <p className="max-w-2xl pb-7 pr-10 text-[0.9375rem] leading-relaxed text-ink-soft md:text-base">
+                  <p className="max-w-2xl pb-7 pr-10 text-base leading-relaxed text-ink-soft">
                     {item.a}
                   </p>
                 </details>

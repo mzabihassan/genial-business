@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { site } from "@/lib/site";
 
+export const dynamic = "force-static";
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   const entry = (
@@ -15,7 +17,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/realisations", 0.9, "monthly"),
     entry("/methode", 0.8, "monthly"),
     entry("/devis", 0.9, "monthly"),
-    entry("/mentions-legales", 0.2, "yearly"),
     entry("/confidentialite", 0.2, "yearly"),
   ];
 }

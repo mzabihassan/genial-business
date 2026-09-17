@@ -17,7 +17,7 @@ export type Project = {
 
 /**
  * Two products, both live. Everything below describes what the sites actually
- * do — no metrics, no testimonials, no invented outcomes. If a claim isn’t
+ * do. No metrics, testimonials or invented outcomes. If a claim isn’t
  * visible on the product itself, it isn’t here.
  */
 export const projects: Project[] = [
@@ -27,9 +27,9 @@ export const projects: Project[] = [
     domain: "isiil.com",
     url: "https://isiil.com",
     sector: "Formation professionnelle en ligne",
-    tagline: "Un institut en ligne où chaque compétence est prouvée, pas déclarée.",
+    tagline: "Un institut en ligne fondé sur des compétences évaluées et vérifiables.",
     summary:
-      "ISIIL forme à un métier précis et fait démontrer chaque compétence par une évaluation qui laisse une preuve datée. Le produit relie un référentiel de métier, des parcours d’apprentissage, des évaluations et un passeport de compétences que n’importe qui peut vérifier avec un lien.",
+      "ISIIL relie un référentiel métier, des parcours d’apprentissage et des évaluations. Chaque compétence validée laisse une preuve datée dans un passeport partageable par lien.",
     surfaces: [
       {
         title: "Site public",
@@ -45,7 +45,7 @@ export const projects: Project[] = [
       },
       {
         title: "Cockpit de compétences",
-        note: "Préparation au rôle, compétences prouvées, prochaine compétence à démontrer, et l’évaluation exacte derrière chaque preuve.",
+        note: "Préparation au rôle, compétences validées, prochaine compétence à démontrer et évaluation associée à chaque preuve.",
       },
       {
         title: "Passeport vérifiable",
@@ -75,9 +75,9 @@ export const projects: Project[] = [
     domain: "profaly.com",
     url: "https://profaly.com",
     sector: "Certification professionnelle",
-    tagline: "Une certification en ligne qui produit un résultat mesurable et vérifiable.",
+    tagline: "Une certification en ligne avec un score, un niveau et un certificat vérifiable.",
     summary:
-      "Profaly permet de passer une certification professionnelle en ligne, de la payer en une fois, et d’en ressortir avec un score, un niveau, un profil de compétences et un certificat PDF que les recruteurs peuvent vérifier. Une analyse de CV par IA complète le résultat avec des points forts, des faiblesses et des pistes concrètes.",
+      "Profaly permet d’acheter et de passer une certification professionnelle en ligne. Le candidat obtient un score, un niveau, un profil de compétences et un certificat PDF vérifiable. Une analyse de CV assistée par IA complète le résultat.",
     surfaces: [
       {
         title: "Catalogue de certifications",
