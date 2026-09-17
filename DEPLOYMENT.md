@@ -163,6 +163,10 @@ et [limites Workers](https://developers.cloudflare.com/workers/platform/limits/)
 
 - Domaine canonique : `https://genial-business.com`, avec une canonique propre
   à chacune des six pages publiques et des métadonnées de partage cohérentes.
+- Règle Cloudflare active : **Canonical www to genial-business.com**, redirection
+  308 de `https://www.genial-business.com/*` vers le même chemin sur le domaine
+  canonique, avec conservation des paramètres et de la méthode HTTP. Cette règle
+  est configurée dans **Rules > Redirect Rules**, hors de l'export Pages.
 - Propriété Search Console : `sc-domain:genial-business.com`, vérifiée par DNS.
   Conserver le TXT `google-site-verification` existant ; aucune balise HTML
   supplémentaire n'est nécessaire pour cette propriété Domaine.
