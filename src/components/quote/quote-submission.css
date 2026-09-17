@@ -112,3 +112,13 @@
 @media (prefers-reduced-motion: reduce) {
   .quote-dispatch, .quote-dispatch *, .quote-dispatch *::after { animation: none !important; transition: none !important; }
 }
+@media (max-width: 380px) {
+  .dispatch-model { scale: .49; }
+}
+@media (max-width: 650px) and (max-height: 700px) {
+  .dispatch-visual { height: 205px; }
+  .dispatch-model { top: 70px; scale: .46; }
+  .dispatch-orbit { top: 105px; }
+  .dispatch-story h2 { font-size: 35px; }
+  .dispatch-feedback { margin-top: 18px; }
+}

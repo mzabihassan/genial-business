@@ -98,6 +98,10 @@ test("mobile et réduction des mouvements, attente longue puis succès", async (
   expect(await modal.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
   expect(await page.locator(".dispatch-model").evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
   await page.screenshot({ animations: "disabled", path: "artifacts/quote-submission/mobile-sending.png" });
+  await page.setViewportSize({ width: 320, height: 568 });
+  expect(await modal.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.screenshot({ animations: "disabled", path: "artifacts/quote-submission/small-mobile-sending.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
   await request!.fulfill({ json: { ok: true } });
   await expect(page.getByRole("button", { name: "Et maintenant ?" })).toBeVisible();
   await page.screenshot({ animations: "disabled", path: "artifacts/quote-submission/mobile-success.png" });
