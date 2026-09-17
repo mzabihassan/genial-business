@@ -31,6 +31,7 @@ import {
   Paperclip,
 } from "@/components/site/Icons";
 import { cx } from "@/lib/utils";
+import { QuoteSubmission, type SubmissionStatus } from "./QuoteSubmission";
 
 export function QuoteForm() {
   const router = useRouter();
@@ -39,8 +40,11 @@ export function QuoteForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submission, setSubmission] = useState<SubmissionStatus | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const submissionLock = useRef(false);
+  const submitting = submission === "sending" || submission === "success";
   const [furthest, setFurthest] = useState(0);
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -140,8 +144,10 @@ export function QuoteForm() {
     setFiles(next);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    // A synchronous lock also catches two events before React has re-rendered.
+    if (submissionLock.current) return;
     if (step !== last) {
       handleNext();
       return;
@@ -167,7 +173,9 @@ export function QuoteForm() {
       return;
     }
 
-    setSubmitting(true);
+    submissionLock.current = true;
+    setAttempt((value) => value + 1);
+    setSubmission("sending");
     setSubmitError(null);
 
     try {
@@ -186,27 +194,52 @@ export function QuoteForm() {
       );
       files.forEach((f) => body.append("attachments", f));
 
-      const res = await fetch("/api/devis", { method: "POST", body });
+      const res = await fetch("/api/devis", {
+        method: "POST",
+        body,
+        signal: AbortSignal.timeout(60_000),
+      });
       if (!res.ok) {
         const payload = (await res.json().catch(() => null)) as {
           error?: string;
         } | null;
-        throw new Error(payload?.error ?? "Envoi impossible pour le moment.");
+        throw new Error(res.status >= 500
+          ? "La transmission est momentanément indisponible. Vous pouvez réessayer dans un instant."
+          : payload?.error ?? "Envoi impossible pour le moment.");
       }
-      router.push("/devis/confirmation");
+      const payload = await res.json();
+      if (payload?.ok !== true) throw new Error("La confirmation de l’envoi n’a pas pu être vérifiée.");
+      // Never hold the response for a decorative minimum animation duration.
+      setSubmission("success");
     } catch (err) {
       setSubmitError(
-        err instanceof Error
+        err instanceof Error && err.name === "TimeoutError"
+          ? "La confirmation tarde à arriver. Vérifiez votre connexion et votre boîte email avant de réessayer."
+          : err instanceof TypeError
+            ? "La connexion a été interrompue. Vérifiez votre boîte email avant de réessayer : l’envoi a peut-être abouti."
+          : err instanceof Error
           ? err.message
           : "Envoi impossible pour le moment. Réessayez ou écrivez-nous directement.",
       );
-      setSubmitting(false);
+      submissionLock.current = false;
+      setSubmission("error");
     }
   };
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
+    <>
+    {submission && (
+      <QuoteSubmission
+        key={attempt}
+        status={submission}
+        error={submitError}
+        onRetry={() => void handleSubmit()}
+        onEdit={() => setSubmission(null)}
+        onContinue={() => router.replace("/devis/confirmation")}
+      />
+    )}
     <div className="grid gap-5 lg:grid-cols-12 lg:gap-16">
       {/* Progress rail */}
       <aside className="lg:col-span-4">
@@ -935,5 +968,6 @@ export function QuoteForm() {
         </div>
       </form>
     </div>
+    </>
   );
 }
