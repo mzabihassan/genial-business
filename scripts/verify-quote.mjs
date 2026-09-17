@@ -24,11 +24,13 @@ try {
   for (const [source, output] of [
     ["src/lib/quote.ts", "quote.mjs"],
     ["src/lib/mail.ts", "mail.mjs"],
+    ["functions/lib/quote-request.ts", "quote-request.mjs"],
     ["functions/api/devis.ts", "devis.mjs"],
   ]) {
     const code = (await readFile(join(root, source), "utf8"))
       .replaceAll('"./quote"', '"./quote.mjs"')
       .replaceAll('"../../src/lib/quote"', '"./quote.mjs"')
+      .replaceAll('"../lib/quote-request"', '"./quote-request.mjs"')
       .replaceAll('"../../src/lib/mail"', '"./mail.mjs"');
     await writeFile(
       join(temp, output),
@@ -65,8 +67,9 @@ try {
       { status: 201 },
     );
   };
+  globalThis.fetch = mockFetch;
 
-  const { emptyQuote, MAX_TOTAL_BYTES, validateStep } = await import(
+  const { emptyQuote, MAX_TOTAL_BYTES, MAX_QUOTE_REQUEST_BYTES, QUOTE_FIELD_LIMITS, validateStep } = await import(
     pathToFileURL(join(temp, "quote.mjs"))
   );
   const { onRequestPost } = await import(
@@ -103,11 +106,14 @@ try {
     if (!form.has("elapsed")) form.append("elapsed", "6000");
     for (const file of attachments) form.append("attachments", file);
 
-    const request = new Request("http://localhost/api/devis", {
+    const encoded = new Request("http://localhost/api/devis", {
       method: "POST",
       body: form,
       headers: { "cf-connecting-ip": ip || `127.0.0.${++caseNumber}` },
     });
+    // Model received wire bytes; canceling Node's FormData encoder mid-part
+    // triggers an unrelated undici producer bug (the edge receives a stream).
+    const request = new Request(encoded.url, { method: "POST", headers: encoded.headers, body: await encoded.arrayBuffer() });
     return onRequestPost({
       request,
       env: requestEnv,
@@ -124,6 +130,23 @@ try {
     { features: ["invalid"] },
   ]) {
     assert.equal((await post(invalid)).status, 400);
+  }
+  for (const [field, limit] of Object.entries(QUOTE_FIELD_LIMITS)) {
+    assert.equal((await post({ [field]: "x".repeat(limit + 1) })).status, 400, `${field} must reject limit + 1`);
+    const step = ["projectTypeOther", "description", "objective", "audience"].includes(field) ? 1 : 5;
+    assert.ok(validateStep(step, { ...valid, [field]: "x".repeat(limit + 1) })[field]);
+    assert.equal((await post({ [field]: " ".repeat(limit) + "x" })).status, 400, `${field}: padding cannot bypass the cap`);
+  }
+  for (const invalid of [
+    { name: ["Test", "Duplicate"] },
+    { features: ["Dashboard", "Dashboard"] },
+    { unexpected: "value" },
+    { siteWebConf: "x".repeat(201) },
+    { elapsed: "1".repeat(17) },
+    { consent: "true plus unexpected padding" },
+    { projectType: " ".repeat(500) + "site" },
+  ]) {
+    assert.ok([400, 413].includes((await post(invalid)).status), "Unexpected or repeated fields must be rejected");
   }
   assert.equal(messages.length, 0, "Invalid input must not call Brevo");
 
@@ -167,7 +190,7 @@ try {
         }),
       ])
     ).status,
-    400,
+    413,
   );
   assert.equal(
     (
@@ -193,9 +216,54 @@ try {
         }),
       ])
     ).status,
-    400,
+    413,
   );
   assert.equal(messages.length, 0, "Attachment failures must not call Brevo");
+
+  async function rawPost(body, headers = {}) {
+    if (body instanceof FormData) {
+      const encoded = new Request("http://localhost", { method: "POST", body });
+      headers = { "content-type": encoded.headers.get("content-type"), ...headers };
+      body = await encoded.arrayBuffer();
+    }
+    const request = new Request("http://localhost/api/devis", {
+      method: "POST", body, duplex: "half",
+      headers: { "cf-connecting-ip": `test-${++caseNumber}`, ...headers },
+    });
+    return onRequestPost({ request, env, waitUntil(task) { backgroundTasks.push(task); } });
+  }
+  assert.equal((await rawPost("{}", { "content-type": "application/json" })).status, 415);
+  let canceled = false;
+  assert.equal((await rawPost(new ReadableStream({
+    pull() { throw new Error("Declared oversized request must not be read"); },
+    cancel() { canceled = true; },
+  }, { highWaterMark: 0 }), {
+    "content-type": "multipart/form-data; boundary=test",
+    "content-length": String(MAX_QUOTE_REQUEST_BYTES + 1),
+  })).status, 413);
+  assert.equal(canceled, true);
+  for (const headers of [{}, { "content-length": "1" }]) {
+    let pulls = 0;
+    let stopped = false;
+    const body = new ReadableStream({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array(MAX_QUOTE_REQUEST_BYTES + 1));
+        if (pulls > 1) throw new Error("Oversized stream must stop immediately");
+      },
+      cancel() { stopped = true; },
+    }, { highWaterMark: 0 });
+    assert.equal((await rawPost(body, { "content-type": "multipart/form-data; boundary=test", ...headers })).status, 413);
+    assert.equal(pulls, 1);
+    assert.equal(stopped, true);
+  }
+  const hugeHeader = `--test\r\nContent-Disposition: form-data; name="name"\r\nX-Padding: ${"a".repeat(1100)}\r\n\r\nx\r\n--test--\r\n`;
+  assert.equal((await rawPost(hugeHeader, { "content-type": "multipart/form-data; boundary=test" })).status, 413);
+  assert.equal((await rawPost("--test\r\ninvalid", { "content-type": "multipart/form-data; boundary=test" })).status, 400);
+  const fileAsText = new FormData();
+  fileAsText.append("name", new File(["not text"], "wrong.txt"));
+  assert.equal((await rawPost(fileAsText)).status, 400);
+  assert.equal(messages.length, 0, "Malformed or oversized requests must never send mail");
 
   globalThis.fetch = mockFetch;
   const file = new File(["Local test project brief"], "brief.txt", {
@@ -214,6 +282,12 @@ try {
     "Local test project brief",
   );
   assert.equal(messages[1].to[0].email, "visitor@example.invalid");
+
+  const maximums = Object.fromEntries(Object.entries(QUOTE_FIELD_LIMITS).map(([field, limit]) => [field, "é".repeat(limit)]));
+  maximums.email = "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + "." + "d".repeat(57) + ".com";
+  assert.equal(maximums.email.length, QUOTE_FIELD_LIMITS.email);
+  assert.equal((await post(maximums)).status, 200, "Exact limits and Unicode must remain valid");
+  await Promise.all(backgroundTasks.splice(0));
 
   // Gate each external call independently: success must wait for the lead,
   // but must not wait for even a very slow acknowledgement.

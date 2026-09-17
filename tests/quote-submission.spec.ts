@@ -33,7 +33,7 @@ test("envoi exclusif, progression, navigation protégée et confirmation immédi
   await page.screenshot({ animations: "disabled", path: "artifacts/quote-submission/desktop-sending.png" });
   const start = Date.now();
   await request!.fulfill({ json: { ok: true } });
-  await expect(modal.getByRole("heading")).toHaveText("Votre idée estentre nos mains.");
+  await expect(modal.getByRole("heading")).toHaveText("Demande envoyée");
   expect(Date.now() - start).toBeLessThan(1500);
   await page.screenshot({ animations: "disabled", path: "artifacts/quote-submission/desktop-success.png" });
   await page.getByRole("button", { name: "Et maintenant ?" }).click();
@@ -152,4 +152,24 @@ test("protection du retour et nettoyage dans les navigateurs sans Navigation API
   await page.getByRole("button", { name: "Revenir à ma demande" }).click();
   await expect(page.locator('[name="name"]')).toHaveValue("Test Atelier");
   expect(await page.evaluate(() => history.length)).toBe(historyLength + 1);
+});
+
+test("chaque champ applique sa limite et affiche un compteur", async ({ page }) => {
+  await page.goto("/devis");
+  await page.getByText("Autre", { exact: true }).click();
+  await page.getByRole("button", { name: "Continuer", exact: true }).click();
+  for (const [name, limit] of Object.entries({ description: 4000, projectTypeOther: 120, objective: 300, audience: 300 })) {
+    await expect(page.locator(`form [name="${name}"]`)).toHaveAttribute("maxlength", String(limit));
+  }
+  const description = page.locator('textarea[name="description"]');
+  await description.fill("a".repeat(4000));
+  await description.press("End");
+  await description.pressSequentially("another character");
+  await expect(description).toHaveValue("a".repeat(4000));
+  await expect(page.getByText("4000 / 4000 caractères", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Continuer", exact: true }).click();
+  for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Passer cette étape" }).click();
+  for (const [name, limit] of Object.entries({ name: 100, email: 254, company: 150, phone: 30, website: 500, message: 1500 })) {
+    await expect(page.locator(`form [name="${name}"]`)).toHaveAttribute("maxlength", String(limit));
+  }
 });

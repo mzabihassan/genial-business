@@ -13,6 +13,37 @@ expire après 20 secondes et ses erreurs sont journalisées sans invalider la
 demande déjà transmise. Il n’est jamais lancé si la notification principale échoue.
 Les pièces jointes restent transmises en binaire par le navigateur, sans altération.
 
+## Limites des demandes
+
+Les mêmes limites sont utilisées par le formulaire et l’API. Elles s’appliquent
+au texte brut, avant suppression des espaces, y compris pour les champs facultatifs.
+
+| Champ | Caractères maximum |
+| --- | ---: |
+| Description du projet | 4 000 |
+| Message complémentaire | 1 500 |
+| Objectif / public visé | 300 chacun |
+| Autre type de projet | 120 |
+| Nom | 100 |
+| Email | 254 |
+| Société | 150 |
+| Téléphone | 30 |
+| Site existant | 500 |
+
+`functions/lib/quote-request.ts` analyse le multipart progressivement avec
+`@remix-run/multipart-parser`. Le serveur compte les octets réellement lus, même
+sans `Content-Length` ou avec une valeur falsifiée. La requête complète est limitée
+à 14 Mio + 64 Kio (fichiers, texte et enveloppe), le texte cumulé à 32 Kio, les
+en-têtes de chaque partie à 1 Kio et le nombre de parties à 50. Les limites des
+fichiers restent de 10 Mio chacun, 14 Mio au total et cinq fichiers.
+
+Le serveur interrompt la lecture en cas de dépassement. Il rejette également les
+champs inconnus, les champs simples répétés, les choix dupliqués, les fichiers dans
+un champ texte et les encodages non acceptés. Les limites de taille renvoient HTTP
+413 ; les champs invalides renvoient HTTP 400. Aucun email ne part pour ces demandes.
+Ces protections bornent le travail par requête ; le compteur anti-abus local ne
+remplace pas une limitation globale des requêtes à l’entrée de Cloudflare.
+
 Cloudflare documente cette architecture pour les exports statiques Next.js :
 [guide Next.js statique](https://developers.cloudflare.com/pages/framework-guides/nextjs/deploy-a-static-nextjs-site/)
 et [Pages Functions](https://developers.cloudflare.com/pages/functions/).

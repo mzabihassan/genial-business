@@ -13,9 +13,12 @@ import {
   PROJECT_TYPES,
   SITUATIONS,
   TIMELINES,
+  QUOTE_FIELD_LIMITS,
+  type QuoteTextField,
   type QuoteData,
 } from "../../src/lib/quote";
 import { sendQuoteEmail, type Attachment } from "../../src/lib/mail";
+import { readQuoteRequest, QuoteRequestError } from "../lib/quote-request";
 
 // This is an isolate-local abuse throttle, not a global counter. Cloudflare's
 // Pages Functions binding list does not currently include Rate Limiting, and a
@@ -45,14 +48,10 @@ const schema = z.object({
   projectType: z.enum(PROJECT_TYPES.map((project) => project.value), {
     message: "Choisissez un type de projet.",
   }),
-  projectTypeOther: z.string().trim().max(200),
-  description: z
-    .string()
-    .trim()
-    .min(20, "Décrivez votre projet en quelques phrases.")
-    .max(8000),
-  objective: z.string().trim().max(500),
-  audience: z.string().trim().max(500),
+  projectTypeOther: boundedText("projectTypeOther"),
+  description: boundedText("description").min(20, "Décrivez votre projet en quelques phrases."),
+  objective: boundedText("objective"),
+  audience: boundedText("audience"),
   situation: oneOf(SITUATIONS.map((situation) => situation.value)),
   assets: z.array(oneOf(ASSETS)).max(ASSETS.length),
   features: z
@@ -60,14 +59,18 @@ const schema = z.object({
     .max(FEATURES.length + 1),
   budget: oneOf(BUDGETS),
   timeline: oneOf(TIMELINES),
-  name: z.string().trim().min(1, "Indiquez votre nom.").max(120),
-  email: z.email("Cet email ne semble pas valide.").max(200),
-  company: z.string().trim().max(160),
-  phone: z.string().trim().max(60),
-  website: z.string().trim().max(300),
-  message: z.string().trim().max(4000),
+  name: boundedText("name").min(1, "Indiquez votre nom."),
+  email: boundedText("email").pipe(z.email("Cet email ne semble pas valide.")),
+  company: boundedText("company"),
+  phone: boundedText("phone"),
+  website: boundedText("website"),
+  message: boundedText("message"),
   consent: z.literal(true, { message: "Votre accord est nécessaire." }),
 });
+
+function boundedText(field: QuoteTextField) {
+  return z.string().max(QUOTE_FIELD_LIMITS[field], `${QUOTE_FIELD_LIMITS[field]} caractères maximum.`).trim();
+}
 
 function fail(error: string, status = 400): Response {
   return Response.json({ error }, { status });
@@ -87,8 +90,9 @@ export const onRequestPost: PagesFunction<CloudflareEnv> = async (context) => {
 
   let form: FormData;
   try {
-    form = await request.formData();
-  } catch {
+    form = await readQuoteRequest(request);
+  } catch (error) {
+    if (error instanceof QuoteRequestError) return fail(error.message, error.status);
     return fail("Requête illisible.");
   }
 
@@ -170,7 +174,7 @@ export const onRequestPost: PagesFunction<CloudflareEnv> = async (context) => {
         receivedAt: new Date().toLocaleString("fr-FR", {
           timeZone: "Europe/Paris",
         }),
-        referer: request.headers.get("referer") ?? "",
+        referer: (request.headers.get("referer") ?? "").slice(0, 500),
       },
       env,
       (task) => context.waitUntil(task),

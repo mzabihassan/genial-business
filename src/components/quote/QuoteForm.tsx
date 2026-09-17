@@ -370,6 +370,7 @@ export function QuoteForm() {
           <input
             id="site-web-conf"
             name="siteWebConf"
+            maxLength={200}
             type="text"
             tabIndex={-1}
             autoComplete="off"
@@ -438,7 +439,7 @@ export function QuoteForm() {
                 lead="Décrivez votre idée avec vos propres mots. Aucun vocabulaire technique n’est nécessaire."
               />
               <div className="space-y-7">
-                <Field
+                <Field field="description" value={data.description}
                   label="Votre projet"
                   required
                   hint="Expliquez ce que vous voulez faire, à qui le produit s’adresse et ce qui vous amène à ce projet."
@@ -448,7 +449,6 @@ export function QuoteForm() {
                     <textarea
                       {...p}
                       name="description"
-                      maxLength={8000}
                       rows={7}
                       value={data.description}
                       onChange={(e) => set("description", e.target.value)}
@@ -458,12 +458,11 @@ export function QuoteForm() {
                 </Field>
 
                 {data.projectType === "autre" && (
-                  <Field label="Quel type de projet ?" optional>
+                  <Field error={errors.projectTypeOther} field="projectTypeOther" value={data.projectTypeOther} label="Quel type de projet ?" optional>
                     {(p) => (
                       <input
                         {...p}
                         name="projectTypeOther"
-                        maxLength={200}
                         type="text"
                         value={data.projectTypeOther}
                         onChange={(e) =>
@@ -474,12 +473,11 @@ export function QuoteForm() {
                   </Field>
                 )}
 
-                <Field label="Quel est l’objectif principal ?" optional>
+                <Field error={errors.objective} field="objective" value={data.objective} label="Quel est l’objectif principal ?" optional>
                   {(p) => (
                     <input
                       {...p}
                       name="objective"
-                      maxLength={500}
                       type="text"
                       value={data.objective}
                       onChange={(e) => set("objective", e.target.value)}
@@ -488,12 +486,11 @@ export function QuoteForm() {
                   )}
                 </Field>
 
-                <Field label="À qui s’adresse-t-il ?" optional>
+                <Field error={errors.audience} field="audience" value={data.audience} label="À qui s’adresse-t-il ?" optional>
                   {(p) => (
                     <input
                       {...p}
                       name="audience"
-                      maxLength={500}
                       type="text"
                       value={data.audience}
                       onChange={(e) => set("audience", e.target.value)}
@@ -684,12 +681,11 @@ export function QuoteForm() {
                 </small>
               </div>
               <div className="grid gap-7 sm:grid-cols-2">
-                <Field label="Nom" required error={errors.name}>
+                <Field field="name" value={data.name} label="Nom" required error={errors.name}>
                   {(p) => (
                     <input
                       {...p}
                       name="name"
-                      maxLength={120}
                       type="text"
                       autoComplete="name"
                       value={data.name}
@@ -698,12 +694,11 @@ export function QuoteForm() {
                   )}
                 </Field>
 
-                <Field label="Email" required error={errors.email}>
+                <Field field="email" value={data.email} label="Email" required error={errors.email}>
                   {(p) => (
                     <input
                       {...p}
                       name="email"
-                      maxLength={200}
                       type="email"
                       inputMode="email"
                       autoComplete="email"
@@ -713,12 +708,11 @@ export function QuoteForm() {
                   )}
                 </Field>
 
-                <Field label="Société" optional>
+                <Field error={errors.company} field="company" value={data.company} label="Société" optional>
                   {(p) => (
                     <input
                       {...p}
                       name="company"
-                      maxLength={160}
                       type="text"
                       autoComplete="organization"
                       value={data.company}
@@ -727,12 +721,11 @@ export function QuoteForm() {
                   )}
                 </Field>
 
-                <Field label="Téléphone" optional>
+                <Field error={errors.phone} field="phone" value={data.phone} label="Téléphone" optional>
                   {(p) => (
                     <input
                       {...p}
                       name="phone"
-                      maxLength={60}
                       type="tel"
                       inputMode="tel"
                       autoComplete="tel"
@@ -743,12 +736,11 @@ export function QuoteForm() {
                 </Field>
 
                 <div className="sm:col-span-2">
-                  <Field label="Site existant" optional>
+                  <Field error={errors.website} field="website" value={data.website} label="Site existant" optional>
                     {(p) => (
                       <input
                         {...p}
                         name="website"
-                        maxLength={300}
                         type="url"
                         inputMode="url"
                         value={data.website}
@@ -760,12 +752,11 @@ export function QuoteForm() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <Field label="Message complémentaire" optional>
+                  <Field error={errors.message} field="message" value={data.message} label="Message complémentaire" optional>
                     {(p) => (
                       <textarea
                         {...p}
                         name="message"
-                        maxLength={4000}
                         rows={4}
                         value={data.message}
                         onChange={(e) => set("message", e.target.value)}

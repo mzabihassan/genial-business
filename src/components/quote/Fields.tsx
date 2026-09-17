@@ -3,6 +3,7 @@
 import { useId } from "react";
 import { Check } from "@/components/site/Icons";
 import { cx } from "@/lib/utils";
+import { QUOTE_FIELD_LIMITS, type QuoteTextField } from "@/lib/quote";
 
 /* --- Selectable card ------------------------------------------------------ */
 
@@ -88,6 +89,8 @@ export function ChoiceCard({
 /* --- Text fields ---------------------------------------------------------- */
 
 export function Field({
+  field,
+  value,
   label,
   hint,
   error,
@@ -95,6 +98,8 @@ export function Field({
   optional,
   children,
 }: {
+  field: QuoteTextField;
+  value: string;
   label: string;
   hint?: string;
   error?: string;
@@ -105,12 +110,15 @@ export function Field({
     "aria-invalid": boolean;
     "aria-describedby": string | undefined;
     className: string;
+    maxLength: number;
   }) => React.ReactNode;
 }) {
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const countId = `${id}-count`;
+  const limit = QUOTE_FIELD_LIMITS[field];
+  const describedBy = [hintId, errorId, countId].filter(Boolean).join(" ");
 
   return (
     <div>
@@ -138,6 +146,7 @@ export function Field({
       <div className="mt-2.5">
         {children({
           id,
+          maxLength: limit,
           "aria-invalid": Boolean(error),
           "aria-describedby": describedBy,
           className: cx(
@@ -150,6 +159,10 @@ export function Field({
           ),
         })}
       </div>
+
+      <p id={countId} className={cx("mt-1.5 text-right font-mono text-[0.6875rem]", value.length >= limit ? "text-trace-deep" : "text-ink-mute")}>
+        {value.length} / {limit} caractères
+      </p>
 
       {error && (
         <p

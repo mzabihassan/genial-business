@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, Check, IconShield } from "@/components/site/Icons";
-import { Logo } from "@/components/site/Logo";
+import { LogoMark } from "@/components/site/Logo";
 import { site } from "@/lib/site";
 import "./quote-submission.css";
 
@@ -118,18 +118,17 @@ export function QuoteSubmission({ status, error, onRetry, onEdit, onContinue }: 
     }}>
       <div className="dispatch-shell">
         <header className="dispatch-header">
-          <Logo />
-          <span className="dispatch-edition">De l’idée au produit.</span>
+          <span className="dispatch-brand"><LogoMark /> Genial Business</span>
+          <span className="dispatch-status"><i />{success ? "Transmis" : status === "error" ? "À réessayer" : "Envoi en cours"}</span>
         </header>
 
         <div className="dispatch-layout">
           <div className="dispatch-story">
-            <p className="label dispatch-eyebrow"><span />{success ? "Bien reçu. À nous de jouer." : status === "error" ? "Reprenons le fil." : "Chaque projet commence ici."}</p>
             <h2 ref={heading} tabIndex={-1} id="dispatch-title">
-              {success ? <>Votre idée est<br /><em>entre nos mains.</em></> : status === "error" ? <>Votre idée mérite<br /><em>une autre tentative.</em></> : <>Votre projet<br /><em>prend forme.</em></>}
+              {success ? "Demande envoyée" : status === "error" ? "Envoi non confirmé" : "Envoi de votre demande"}
             </h2>
             <p id="dispatch-description" className="dispatch-description">
-              {success ? "Votre demande a bien été transmise. Un développeur va la lire avec attention et vous contacter pour la suite." : status === "error" ? "L’envoi n’a pas pu être confirmé. Vos réponses et vos pièces jointes sont conservées ici." : "Nous transmettons votre demande et ses détails à notre équipe. Encore un instant, la suite se construit ensemble."}
+              {success ? "Un développeur va la lire et vous recontacter pour discuter de votre projet." : status === "error" ? "L’envoi n’a pas pu être confirmé. Vos réponses et vos pièces jointes sont conservées ici." : "Votre projet, vos coordonnées et vos documents sont transmis à notre équipe."}
             </p>
 
             <div className="dispatch-feedback" aria-live="polite" aria-atomic="true">
@@ -155,23 +154,17 @@ export function QuoteSubmission({ status, error, onRetry, onEdit, onContinue }: 
           </div>
 
           <div className="dispatch-visual" aria-hidden="true" style={{ "--assembly": success ? 1 : Math.min(1, progress / 87) } as CSSProperties}>
-            <div className="dispatch-grid" />
-            <span className="dispatch-coordinate dispatch-coordinate-top">GB — ATELIER DIGITAL</span>
-            <div className="dispatch-orbit" />
             <div className="dispatch-model">
-              <div className="dispatch-foundation"><span>UNE IDÉE. TOUT UN POSSIBLE.</span><i /><i /><i /></div>
-              <div className="dispatch-module dispatch-module-back"><span>Les fondations</span><div className="dispatch-circuit"><i /><i /><i /></div><small>Vos besoins · Votre ambition</small></div>
-              <div className="dispatch-module dispatch-module-middle"><span>Les connexions</span><div className="dispatch-connections"><i /><b /><i /><b /><i /></div><small>Chaque détail trouve sa place.</small></div>
-              <div className="dispatch-module dispatch-module-front"><div className="dispatch-mini-header"><span>Votre projet.</span><span>↗</span></div><div className="dispatch-mini-layout"><div><small>LE DÉBUT DE QUELQUE CHOSE</small><strong>Une idée.<br />Et la suite.</strong><i /></div><div className="dispatch-mini-art"><i /><i /><i /></div></div><div className="dispatch-mini-footer"><span>Imaginé par vous.</span><span>Construit ensemble.</span></div></div>
+              <div className="dispatch-module dispatch-module-back"><span>Coordonnées</span><div className="dispatch-lines"><i /><i /><i /></div></div>
+              <div className="dispatch-module dispatch-module-middle"><span>Documents</span><div className="dispatch-documents"><i /><i /><i /></div></div>
+              <div className="dispatch-module dispatch-module-front"><div className="dispatch-mini-header"><LogoMark /><span>Votre projet</span><span>↗</span></div><div className="dispatch-lines"><i /><i /><i /></div><div className="dispatch-mini-footer"><span>Demande de devis</span><Check className="size-3" /></div></div>
             </div>
-            <div className="dispatch-seal"><Check className="size-6" /></div>
-            <span className="dispatch-coordinate dispatch-coordinate-bottom">{success ? "01 — LE PREMIER PAS EST FAIT" : status === "error" ? "VOTRE PROJET RESTE INTACT" : "LES BONNES IDÉES PRENNENT VIE"}</span>
+            <div className="dispatch-seal"><Check className="size-5" /></div>
           </div>
         </div>
 
         <footer className="dispatch-footer">
           <span><IconShield className="size-4" />Vos informations restent confidentielles.</span>
-          <span>Un développeur derrière chaque projet.</span>
         </footer>
       </div>
     </dialog>

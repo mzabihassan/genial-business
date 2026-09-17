@@ -16,6 +16,7 @@
     "docker:build": "docker build --tag genial-business ."
   },
   "dependencies": {
+    "@remix-run/multipart-parser": "^0.16.4",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",

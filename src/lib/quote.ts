@@ -110,6 +110,25 @@ export function formatBytes(bytes: number): string {
 
 /* --- The payload --------------------------------------------------------- */
 
+// UTF-16 lengths, matching HTML maxlength and server-side string.length.
+export const QUOTE_FIELD_LIMITS = {
+  projectTypeOther: 120,
+  description: 4000,
+  objective: 300,
+  audience: 300,
+  name: 100,
+  email: 254,
+  company: 150,
+  phone: 30,
+  website: 500,
+  message: 1500,
+} as const;
+export type QuoteTextField = keyof typeof QUOTE_FIELD_LIMITS;
+
+export const MAX_QUOTE_TEXT_BYTES = 32 * 1024;
+export const MAX_QUOTE_REQUEST_BYTES = MAX_TOTAL_BYTES + 64 * 1024;
+export const MAX_QUOTE_PARTS = 50;
+
 export type QuoteData = {
   projectType: string;
   projectTypeOther: string;
@@ -174,6 +193,15 @@ export function validateStep(step: number, d: QuoteData): Record<string, string>
       errors.email = "Cet email ne semble pas valide.";
     if (!d.consent)
       errors.consent = "Votre accord est nécessaire pour que nous puissions vous répondre.";
+  }
+
+  const textFields: QuoteTextField[] = step === 1
+    ? ["projectTypeOther", "description", "objective", "audience"]
+    : step === 5 ? ["name", "email", "company", "phone", "website", "message"] : [];
+  for (const field of textFields) {
+    if (d[field].length > QUOTE_FIELD_LIMITS[field]) {
+      errors[field] = `${QUOTE_FIELD_LIMITS[field]} caractères maximum.`;
+    }
   }
 
   return errors;
