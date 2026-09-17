@@ -207,7 +207,7 @@ export function QuoteForm() {
           ? "La transmission est momentanément indisponible. Vous pouvez réessayer dans un instant."
           : payload?.error ?? "Envoi impossible pour le moment.");
       }
-      const payload = await res.json();
+      const payload = await res.json().catch(() => null);
       if (payload?.ok !== true) throw new Error("La confirmation de l’envoi n’a pas pu être vérifiée.");
       // Never hold the response for a decorative minimum animation duration.
       setSubmission("success");

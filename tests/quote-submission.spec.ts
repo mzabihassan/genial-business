@@ -111,6 +111,27 @@ test("une réponse HTTP 200 invalide ne déclenche pas un faux succès", async (
   await expect(page.getByRole("button", { name: "Et maintenant ?" })).toHaveCount(0);
 });
 
+test("une réponse HTML inattendue reste une erreur lisible", async ({ page }) => {
+  await page.route("**/api/devis", (route) => route.fulfill({ contentType: "text/html", body: "<html>Maintenance</html>" }));
+  await fillQuote(page);
+  await page.getByRole("button", { name: "Envoyer ma demande" }).click();
+  await expect(page.getByRole("dialog").getByText("La confirmation de l’envoi n’a pas pu être vérifiée.")).toBeVisible();
+});
+
+test("un serveur sans réponse libère le parcours après expiration", async ({ page }) => {
+  await page.addInitScript(() => {
+    const timeout = AbortSignal.timeout.bind(AbortSignal);
+    AbortSignal.timeout = () => timeout(100);
+  });
+  await page.route("**/api/devis", () => {});
+  await fillQuote(page);
+  await page.getByRole("button", { name: "Envoyer ma demande" }).click();
+  await expect(page.getByRole("dialog").getByText(/La confirmation tarde à arriver/)).toBeVisible();
+  await page.getByRole("button", { name: "Revenir à ma demande" }).click();
+  await expect(page.locator('[name="email"]')).toHaveValue("test@example.invalid");
+  await expect(page.getByText("brief.txt", { exact: true })).toBeVisible();
+});
+
 test("protection du retour et nettoyage dans les navigateurs sans Navigation API", async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(window, "navigation", { value: undefined, configurable: true }));
   let request: Route | undefined;
