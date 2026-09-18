@@ -869,9 +869,8 @@ export function QuoteForm() {
                     )}
                   </span>
                   <span className="text-[0.9375rem] leading-relaxed text-ink-soft">
-                    J’accepte que Genial Business utilise ces informations pour
-                    étudier ma demande et me répondre. Elles ne sont ni
-                    revendues ni utilisées à d’autres fins.{" "}
+                    J’ai pris connaissance de la politique de confidentialité.
+                    Mes informations servent à étudier ma demande et à me répondre.{" "}
                     <a
                       href="/confidentialite"
                       className="link-underline font-medium text-ink"

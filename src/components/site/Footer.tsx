@@ -24,12 +24,13 @@ const columns = [
       { href: "/methode#propriete", label: "Propriété et accès" },
     ],
   },
-  {
-    title: "Informations",
-    links: [
-      { href: "/confidentialite", label: "Confidentialité" },
-    ],
-  },
+];
+
+const legalLinks = [
+  { href: "/mentions-legales", label: "Mentions légales" },
+  { href: "/confidentialite", label: "Confidentialité" },
+  { href: "/cgv", label: "CGV" },
+  { href: "/cookies", label: "Cookies" },
 ];
 
 export function Footer() {
@@ -59,7 +60,7 @@ export function Footer() {
             </a>
           </div>
 
-          <div className="grid gap-10 sm:grid-cols-3">
+          <div className="grid gap-10 sm:grid-cols-2">
             {columns.map((col) => (
               <nav key={col.title} aria-label={col.title}>
                 <h2 className="label text-[#a7ab9b]">{col.title}</h2>
@@ -85,6 +86,20 @@ export function Footer() {
             © {new Date().getFullYear()} {site.name}
           </p>
           <p className="label text-[#a7ab9b]">{site.domain}</p>
+        </div>
+        <div className="mt-6 flex flex-col gap-5 text-xs leading-relaxed text-[#a7ab9b] md:flex-row md:items-start md:justify-between">
+          <p>{site.name} · Entreprise française · SIREN 934 156 811 · RNE</p>
+          <nav aria-label="Informations légales" className="flex flex-wrap gap-x-5 gap-y-2">
+            {legalLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="underline-offset-4 transition-colors hover:text-paper focus-visible:text-paper"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>

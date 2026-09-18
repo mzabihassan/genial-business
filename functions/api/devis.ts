@@ -65,7 +65,7 @@ const schema = z.object({
   phone: boundedText("phone"),
   website: boundedText("website"),
   message: boundedText("message"),
-  consent: z.literal(true, { message: "Votre accord est nécessaire." }),
+  consent: z.literal(true, { message: "Veuillez prendre connaissance de la politique de confidentialité." }),
 });
 
 function boundedText(field: QuoteTextField) {

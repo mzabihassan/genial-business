@@ -13,5 +13,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/methode",
     "/devis",
     "/confidentialite",
+    "/mentions-legales",
+    "/cgv",
+    "/cookies",
   ].map((path) => ({ url: `${site.url}${path}` }));
 }

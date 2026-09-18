@@ -192,7 +192,7 @@ export function validateStep(step: number, d: QuoteData): Record<string, string>
     else if (!EMAIL_RE.test(d.email.trim()))
       errors.email = "Cet email ne semble pas valide.";
     if (!d.consent)
-      errors.consent = "Votre accord est nécessaire pour que nous puissions vous répondre.";
+      errors.consent = "Veuillez prendre connaissance de la politique de confidentialité.";
   }
 
   const textFields: QuoteTextField[] = step === 1

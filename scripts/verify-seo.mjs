@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 // Run against the built export, or pass the production origin to verify HTTP too.
 const origin = "https://genial-business.com";
 const base = process.argv[2];
-const paths = ["/", "/services", "/realisations", "/methode", "/devis", "/confidentialite"];
+const paths = ["/", "/services", "/realisations", "/methode", "/devis", "/confidentialite", "/mentions-legales", "/cgv", "/cookies"];
 
 async function read(path, status = 200) {
   if (base) {
